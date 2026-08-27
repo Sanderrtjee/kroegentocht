@@ -171,17 +171,25 @@ jobs:
           SCRIPT
           docker run --rm -i --entrypoint /bin/bash kroegentocht-addon:ci < check-image.sh
 
-      # De echte test: de add-on starten zoals de Supervisor dat doet. bashio
-      # leest de opties uit /data/options.json, dus met dat bestand en een leeg
-      # /data draait de hele keten: init-config, initdb, Postgres, de migraties en
-      # de api. Slaagt /readyz, dan werkt ook de read-only databaserol.
+      # De echte test: de add-on starten en de hele keten laten draaien, dus
+      # init-config, initdb, Postgres, de migraties en de api. Slaagt /readyz met
+      # publicView op ok, dan werkt ook de read-only databaserol.
+      #
+      # Er is hier geen Supervisor, dus init-config valt terug op
+      # /data/options.json. Dat pad bestaat op een echte machine ook (de
+      # Supervisor schrijft dat bestand), dus we testen geen fictieve variant.
+      #
+      # registration_enabled staat op false, en daar wordt op gecontroleerd. Dat
+      # is geen willekeurige keuze: false is de waarde die stil verkeerd kan gaan
+      # als je opties met 'jq // empty' uitleest, want in jq is false ook falsy.
+      # Deze test valt om zodra iemand die fout opnieuw maakt.
       - name: Add-on starten en /readyz controleren
         run: |
           mkdir -p addon-data
           cat > addon-data/options.json <<'JSON'
           {
             "invite_code": "ci-uitnodigingscode",
-            "registration_enabled": true,
+            "registration_enabled": false,
             "public_base_url": "http://127.0.0.1:8099",
             "contact_email": "ci@voorbeeld.nl",
             "cookie_secure": true,
@@ -206,7 +214,7 @@ jobs:
           done
 
           echo '--- logboek van de add-on ---'
-          docker logs kt-addon 2>&1 | tail -60
+          docker logs kt-addon 2>&1 | tail -80
 
           if [ "${ok}" != 1 ]; then
             echo 'FOUT: /readyz antwoordde niet binnen 180 seconden'
@@ -217,7 +225,17 @@ jobs:
           cat readyz.json
           grep -q '"database":"ok"' readyz.json
           grep -q '"publicView":"ok"' readyz.json
-          echo 'add-on is opgekomen en beide databasepools werken'
+
+          echo '--- opties zijn echt aangekomen ---'
+          curl -fsS http://127.0.0.1:8099/api/auth/registration-status -o regstatus.json
+          cat regstatus.json
+          if ! grep -q '"enabled":false' regstatus.json; then
+            echo 'FOUT: registration_enabled stond op false maar de app rapporteert iets anders.'
+            echo 'Waarschijnlijk worden de opties verkeerd uitgelezen.'
+            exit 1
+          fi
+
+          echo 'add-on is opgekomen, beide databasepools werken en de opties komen door'
 
       - name: Add-on opruimen
         if: always()

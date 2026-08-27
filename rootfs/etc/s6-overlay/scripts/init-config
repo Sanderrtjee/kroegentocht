@@ -18,13 +18,57 @@ set -euo pipefail
 
 RUNTIME_ENV=/run/kroegentocht.env
 SECRETS=/data/secrets.env
+OPTIONS_FILE=/data/options.json
 
-bashio::log.info 'Configuratie klaarzetten'
+# ------------------------------------------------------------- opties lezen
+#
+# bashio::config haalt de opties niet uit /data/options.json maar bij de
+# Supervisor-API. Zonder Supervisor mislukt dat met "Could not resolve host:
+# supervisor" en komt elke optie leeg terug.
+#
+# Daarom deze omweg: staat SUPERVISOR_TOKEN in de omgeving, dan draaien we als
+# echte add-on en gebruiken we bashio. Zo niet, dan lezen we /data/options.json
+# zelf. Dat maakt het image ook met een gewone docker run te starten, en het is
+# precies wat de CI doet om de add-on te testen zonder Home Assistant erbij.
+# Geen bashio-helper voor deze test: een gewone shellcheck kan niet falen.
+if [[ -n "${SUPERVISOR_TOKEN:-}" ]]; then
+    SOURCE_MODE=supervisor
+else
+    SOURCE_MODE=standalone
+    if [[ ! -f "${OPTIONS_FILE}" ]]; then
+        bashio::log.error "Geen Supervisor gevonden en ${OPTIONS_FILE} bestaat niet."
+        bashio::exit.nok 'Draai dit image als Home Assistant add-on, of geef zelf een /data/options.json mee.'
+    fi
+fi
+
+option() {
+    local key="${1}"
+    local default="${2-}"
+    local value
+
+    if [[ "${SOURCE_MODE}" == 'supervisor' ]]; then
+        bashio::config "${key}" "${default}"
+        return
+    fi
+
+    # Let op: bewust niet '.[$k] // empty'. In jq is false ook falsy, dus dat zou
+    # een optie die op false staat als "niet ingevuld" behandelen en stil op de
+    # default terugzetten. Bij registration_enabled en cookie_secure is dat
+    # precies verkeerd om: dan staat de registratie open terwijl je hem dicht
+    # hebt gezet. Daarom een expliciete null-test.
+    value="$(jq -r --arg k "${key}" 'getpath([$k]) | if . == null then empty else . end' "${OPTIONS_FILE}")"
+    if [[ -z "${value}" ]]; then
+        value="${default}"
+    fi
+    printf '%s' "${value}"
+}
+
+bashio::log.info "Configuratie klaarzetten (bron: ${SOURCE_MODE})"
 
 # --------------------------------------------------------------- validatie
-invite_code=$(bashio::config 'invite_code' '')
-public_base_url=$(bashio::config 'public_base_url' '')
-contact_email=$(bashio::config 'contact_email' '')
+invite_code="$(option 'invite_code' '')"
+public_base_url="$(option 'public_base_url' '')"
+contact_email="$(option 'contact_email' '')"
 
 problems=()
 if [[ -z "${invite_code}" || ${#invite_code} -lt 6 ]]; then
@@ -71,11 +115,11 @@ POSTGRES_USER=kroeg
     echo "NODE_ENV=production"
     echo "HOST=0.0.0.0"
     echo "PORT=3000"
-    echo "LOG_LEVEL=$(bashio::config 'log_level' 'info')"
+    echo "LOG_LEVEL=$(option 'log_level' 'info')"
 
     echo "INVITE_CODE=${invite_code}"
-    echo "REGISTRATION_ENABLED=$(bashio::config 'registration_enabled' 'true')"
-    echo "COOKIE_SECURE=$(bashio::config 'cookie_secure' 'true')"
+    echo "REGISTRATION_ENABLED=$(option 'registration_enabled' 'true')"
+    echo "COOKIE_SECURE=$(option 'cookie_secure' 'true')"
     echo "PUBLIC_BASE_URL=${public_base_url}"
     echo "CONTACT_EMAIL=${contact_email}"
 
@@ -84,9 +128,9 @@ POSTGRES_USER=kroeg
     echo "WEB_DIST_PATH=/app/web/dist"
     echo "MIGRATIONS_DIR=/app/db/migrations"
 
-    echo "TILE_CACHE_TTL_DAYS=$(bashio::config 'tile_cache_ttl_days' '30')"
-    echo "TILE_UPSTREAM_TEMPLATE=$(bashio::config 'tile_upstream_template')"
-    echo "NOMINATIM_BASE_URL=$(bashio::config 'nominatim_base_url')"
+    echo "TILE_CACHE_TTL_DAYS=$(option 'tile_cache_ttl_days' '30')"
+    echo "TILE_UPSTREAM_TEMPLATE=$(option 'tile_upstream_template' 'https://tile.openstreetmap.org/{z}/{x}/{y}.png')"
+    echo "NOMINATIM_BASE_URL=$(option 'nominatim_base_url' 'https://nominatim.openstreetmap.org')"
 
     # Het add-onnetwerk van Home Assistant is 172.30.32.0/23. Alleen vanaf de
     # private bereiken worden proxyheaders vertrouwd, zodat niemand van buiten
