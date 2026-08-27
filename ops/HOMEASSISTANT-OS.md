@@ -22,54 +22,81 @@ verhongert valt weg. Op een i5 met 16 GB is dat te overzien.
 
 > Blijft staan, ongeacht de route: een los altijd-aan bakje, of Proxmox met Home
 > Assistant in een VM en deze stack in een tweede VM, is een betere plek voor jaren
-> aan foto's dan een appliance-OS. Het kost bij route B nul regels code, want dan
-> gebruik je gewoon `compose.yaml`.
+> aan foto's dan een appliance-OS.
 
 ---
 
 ## Route A: als Home Assistant add-on
 
-De hele repo is de add-on. `config.yaml`, `build.yaml`, `Dockerfile`, `DOCS.md`,
-`icon.png`, `logo.png` en `rootfs/` staan daarom in de root en niet in een submap:
-de Supervisor bouwt een add-on met de add-onmap als build-context, dus de
-Dockerfile moet bij de broncode van `api`, `web` en `shared` kunnen.
+De add-on wordt **niet op je toestel gebouwd**. Het image komt kant en klaar uit
+GitHub Container Registry, gebouwd door de CI van deze repo.
 
-Eén container met PostgreSQL 17 met PostGIS en de Node-api erin, met s6-overlay
-als procesbeheerder. Alle data in `/data`, het persistente volume van de add-on.
+Dat is geen luiheid maar noodzaak. Op Home Assistant OS krijgt de build-container
+van BuildKit geen DNS-namen opgelost, ook niet als de Supervisor-DNS gewoon werkt
+(`nslookup` in de terminal lukt, `apt-get` in de build niet). De build strandt dan
+na vier minuten wachten op:
 
-### 1. Repo naar de HA-machine
-
-De add-on wordt op het toestel gebouwd, dus de code moet in `/addons` staan. Open
-de terminal-add-on (Advanced SSH & Web Terminal, of Terminal & SSH) en kloon hem
-daar. Push de repo eerst naar een git-remote, of gebruik de Samba-add-on om de map
-te kopiëren.
-
-```bash
-git clone https://github.com/<jij>/kroegentocht.git /addons/kroegentocht
-ls /addons/kroegentocht/config.yaml
+```
+Temporary failure resolving 'deb.debian.org'
+E: Package 'gnupg' has no installation candidate
 ```
 
-Dat laatste bestand moet bestaan, anders ziet de Supervisor de add-on niet.
+Images **ophalen** lukt op diezelfde machine wel. Vandaar deze opzet. Bijkomende
+voordelen: installeren duurt een minuut in plaats van twintig, en de Supervisor
+blokkeert een pull niet als je systeem als `unsupported` staat gemarkeerd — een
+build wél.
 
-Let op bij kopiëren via Samba in plaats van git: de scripts in `rootfs/` en
-`ops/backup/` moeten LF-regeleindes hebben. De repo dwingt dat af met
-`.gitattributes`, maar een kopieeractie via Windows kan het alsnog verpesten. Een
-script met CRLF geeft bij het starten "no such file or directory" op een pad dat
-wél bestaat; dat is het symptoom.
+### 1. Zorg dat het image gepubliceerd is
 
-### 2. Add-on installeren
+Push naar `main`. De CI bouwt het add-onimage, draait er een smoketest op (de
+add-on wordt echt gestart en `/readyz` moet `database: ok` en `publicView: ok`
+geven) en pusht daarna naar:
 
-**Instellingen → Add-ons → ⋮ (rechtsboven) → Controleer op updates.** Daarna
-verschijnt "Kroegentocht" onderaan onder **Local add-ons**. Open hem en klik
-**Installeren**.
+```
+ghcr.io/sanderrtjee/kroegentocht-amd64:1.0.0
+```
 
-De eerste build duurt op een i5-7400 een paar minuten: hij haalt de basisimages
-op, installeert PostgreSQL 17 met PostGIS uit de PGDG-repository en draait `npm
-ci`, `tsc` en `vite build`. Reken op ongeveer 3 GB tijdelijke schijfruimte.
-Controleer vooraf:
+**De eerste keer staat dat pakket op private.** Zet het eenmalig op publiek:
+GitHub → je profielfoto → **Packages** → `kroegentocht-amd64` → **Package
+settings** → **Change visibility** → Public. Anders kan je Home Assistant het niet
+ophalen zonder inloggegevens.
+
+Controleer of het er staat:
 
 ```bash
-df -h /mnt/data
+docker pull ghcr.io/sanderrtjee/kroegentocht-amd64:1.0.0
+```
+
+Of gewoon in de browser: github.com/Sanderrtjee?tab=packages
+
+### 2. Repository toevoegen in Home Assistant
+
+Dit is waar dat **Add repository**-venster voor is.
+
+**Instellingen → Add-ons → Add-on store → ⋮ rechtsboven → Repositories.** Plak:
+
+```
+https://github.com/Sanderrtjee/kroegentocht
+```
+
+**Add**, dan het venster sluiten. Onderaan de store staat nu een kop
+**Kroegentocht** met de add-on eronder. Openen → **Installeren**. Dat duurt nu
+ongeveer een minuut: hij haalt alleen het image op.
+
+Staat hij er niet, dan **⋮ → Controleer op updates**. Werkt dat niet omdat je
+systeem als unsupported staat gemarkeerd (`StoreManager.reload blocked from
+execution`), herstart dan de Supervisor; die leest de store bij het starten
+opnieuw in via een pad dat niet geblokkeerd wordt:
+
+```bash
+ha supervisor restart
+```
+
+Had je eerder de repo naar `/addons/kroegentocht` gekloond, ruim die dan op —
+anders heb je de add-on twee keer:
+
+```bash
+rm -rf /addons/kroegentocht
 ```
 
 ### 3. Configureren en starten
@@ -85,7 +112,8 @@ Op het tabblad **Configuratie** minimaal deze drie invullen:
 Opslaan, dan **Starten**, dan het **Logboek** openen. Daar moet staan:
 
 ```
-[init-config] Configuratie staat klaar
+[init-config] Configuratie klaarzetten (bron: supervisor)
+[init-config] Eerste start: geheimen genereren in /data/secrets.env
 [init-postgres] Eerste start: database initialiseren in /data/postgres
 [api] wachten tot PostgreSQL verbindingen aanneemt
 [migrate] toepassen 0001_extensions_and_core.sql
@@ -145,10 +173,11 @@ Eerste account: ga naar `https://kroegen.jouwdomein.nl/registreren`, vul je
 `invite_code` in, en maak jezelf daarna beheerder:
 
 ```bash
-docker exec addon_local_kroegentocht \
-  psql -U kroeg -d kroegentocht \
-  -c "UPDATE users SET role = 'admin' WHERE username = 'sander';"
+docker exec addon_local_kroegentocht psql -U kroeg -d kroegentocht -c "UPDATE users SET role = 'admin' WHERE username = 'sander';"
 ```
+
+Bij een add-on uit een repository heet de container mogelijk anders; zoek hem op
+met het `docker ps`-commando hierboven.
 
 Zet daarna eventueel `registration_enabled` op `false`.
 
@@ -171,27 +200,29 @@ rol en zijn rechten weer goed.
 
 ### Bijwerken
 
-```bash
-cd /addons/kroegentocht && git pull
-```
+1. Verhoog `version` in `kroegentocht/config.yaml`.
+2. Commit en push naar `main`. De CI pusht een image met die tag.
+3. In Home Assistant: **⋮ → Controleer op updates**. De add-on biedt de update aan.
 
-Verhoog `version` in `config.yaml` (of laat de nieuwe commit dat doen), en dan
-**⋮ → Controleer op updates**. Home Assistant biedt daarna een update aan.
+Het versienummer in `config.yaml` en de gepushte tag moeten gelijk zijn. Wijken ze
+af, dan meldt de Supervisor alleen dat het image niet bestaat.
 
 ### Als het niet start
 
 **"Vul de opties aan"** in het logboek: de melding zegt per optie wat er mist.
 
+**Image niet te vinden.** Het GHCR-pakket staat nog op private, of de tag bestaat
+niet. Controleer beide (zie stap 1).
+
 **Permissiefouten van Postgres.** De Supervisor zet een AppArmor-profiel op de
 add-on. Kom je daar niet door, zet dan tijdelijk `apparmor: false` in
-`config.yaml` om vast te stellen of dat de oorzaak is. Laat het daarna niet zo
-staan zonder erover nagedacht te hebben.
+`kroegentocht/config.yaml` om vast te stellen of dat de oorzaak is. Laat het daarna
+niet zo staan zonder erover nagedacht te hebben.
 
-**"no such file or directory"** op een pad dat bestaat: CRLF-regeleindes in een
-script. Zie de opmerking bij stap 1.
-
-**Bouwfout bij `apt-get`**: de PGDG-repository was niet bereikbaar. Probeer
-opnieuw; het is een netwerkfout, geen configuratiefout.
+**`unsupported` blokkeert acties.** Controleer met `ha resolution info` wat er
+speelt. Een verouderde OS-versie zet de Supervisor in unsupported-toestand,
+waarna hij onder andere de store-reload en het bouwen van add-ons weigert. Een
+pull van een bestaand image gaat wel door.
 
 ---
 
@@ -201,27 +232,36 @@ Alleen als route A niet lukt of als je de resourcelimieten echt nodig hebt. Je
 data staat dan buiten je Home Assistant backups; regel daar zelf iets voor.
 
 `docker compose` bestaat niet op HA OS: de host heeft alleen de `docker`-CLI,
-zonder de compose-plugin. Ook via de debug-SSH op poort 22222 kun je dus geen
-`docker compose up` draaien. De Portainer-add-on brengt zijn eigen compose mee en
-is daarom de enige praktische route.
+zonder de compose-plugin. De Portainer-add-on brengt zijn eigen compose mee en is
+daarom de enige praktische route.
 
 `compose.hassio.yaml` past de stack aan voor deze machine: zuiniger
 resourcelimieten, de api ook op het `hassio`-netwerk zodat de proxy erbij kan
 zonder poort op de host, en de backups naar `/share` in plaats van naar een
 Docker-volume, want `/share` gaat wél mee in een volledige Home Assistant backup.
 
+Let op: ook Portainer bouwt met dezelfde Docker-daemon, dus als de
+build-container op jouw machine geen DNS heeft, loopt route B op precies hetzelfde
+probleem vast.
+
 ### Voorbereiden
 
 ```bash
 mkdir -p /share/kroegentocht-backups
-chown 70:70 /share/kroegentocht-backups
-ls -d /mnt/data/supervisor/share
-df -h /mnt/data
-docker network ls | grep hassio
 ```
 
-Uid 70 is de postgres-gebruiker waaronder de backupcontainer draait. Wijkt het pad
-van `/share` af, pas dan de bind mount in `compose.hassio.yaml` aan.
+```bash
+chown 70:70 /share/kroegentocht-backups
+```
+
+Uid 70 is de postgres-gebruiker waaronder de backupcontainer draait. Controleer
+ook het pad van `/share` en of het netwerk bestaat:
+
+```bash
+ls -d /mnt/data/supervisor/share; df -h /mnt/data; docker network ls | grep hassio
+```
+
+Wijkt het pad af, pas dan de bind mount in `compose.hassio.yaml` aan.
 
 Geheimen genereren, drie keer:
 
@@ -243,7 +283,6 @@ connection-URL.
 | Repository reference | `refs/heads/main` |
 | Compose path | `compose.yaml` |
 | Additional paths | `compose.hassio.yaml` |
-| Authentication | aan bij een privérepo, met een read-only token |
 
 Noem de stack echt `kroegentocht`: Portainer gebruikt de stacknaam als
 compose-projectnaam, dus dan heten de volumes `kroegentocht_pgdata` en

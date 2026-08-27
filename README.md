@@ -97,6 +97,7 @@ shared/  Zod-schema's, constanten en types die api en web delen.
 db/      Versienummerde SQL-migraties. Deze zijn gezaghebbend voor het schema.
 ops/     Dockerfiles, backupscripts, testcompose, Windows-devscript, deploydocs.
 rootfs/  s6-diensten, alleen voor de Home Assistant add-on.
+kroegentocht/  add-onmanifest en documentatie voor de Home Assistant add-on.
 ```
 
 ### Twee manieren om dit te draaien
@@ -104,15 +105,17 @@ rootfs/  s6-diensten, alleen voor de Home Assistant add-on.
 | | Bestanden |
 | --- | --- |
 | **Compose-stack** op een gewone Docker-host: drie containers, database op een eigen netwerk, resourcelimieten | `compose.yaml`, `ops/api.Dockerfile`, `ops/backup/` |
-| **Home Assistant add-on**: één container met Postgres en de api samen, data in `/data` zodat het in een HA-backup zit | `config.yaml`, `build.yaml`, `Dockerfile`, `DOCS.md`, `rootfs/`, `icon.png`, `logo.png` |
+| **Home Assistant add-on**: één container met Postgres en de api samen, data in `/data` zodat het in een HA-backup zit | `repository.yaml`, `kroegentocht/`, `ops/addon.Dockerfile`, `rootfs/` |
 
-Dezelfde applicatiecode, twee verpakkingen. De add-onbestanden staan in de root en
-niet in een submap omdat de Home Assistant Supervisor een add-on bouwt met de
-add-onmap als build-context: de `Dockerfile` moet dus bij de broncode van `api`,
-`web` en `shared` kunnen. Je kloont de repo daarom naar `/addons/kroegentocht`.
+Dezelfde applicatiecode, twee verpakkingen. Let op het onderscheid tussen de twee
+Dockerfiles: `ops/api.Dockerfile` is de compose-stack, `ops/addon.Dockerfile` is
+de add-on.
 
-Let op het onderscheid: `Dockerfile` in de root is de add-on,
-`ops/api.Dockerfile` is de compose-stack.
+De repo is tegelijk een **add-on repository**: je voegt hem in Home Assistant toe
+via de URL, en de Supervisor haalt een kant-en-klaar image uit GHCR op in plaats
+van het zelf te bouwen. Dat is nodig omdat de build-container op Home Assistant OS
+geen DNS-namen kan oplossen; zie
+[`ops/HOMEASSISTANT-OS.md`](ops/HOMEASSISTANT-OS.md) voor het hele verhaal.
 
 `api/src/db/schema.ts` beschrijft hetzelfde schema in Drizzle, voor typed
 queries. **De migraties zijn de bron van waarheid**: PostGIS-kolommen, generated

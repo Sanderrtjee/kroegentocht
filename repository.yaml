@@ -1,0 +1,12 @@
+# Home Assistant add-on repository.
+#
+# Hierdoor kun je deze repo in Home Assistant toevoegen via
+# Instellingen -> Add-ons -> Add-on store -> drie puntjes -> Repositories,
+# en verschijnt Kroegentocht daarna in de store.
+#
+# Elke add-on staat in een eigen submap met een eigen config.yaml. Hier is dat
+# alleen kroegentocht/.
+
+name: Kroegentocht
+url: https://github.com/Sanderrtjee/kroegentocht
+maintainer: Sander Buitenhuis <sanderrtjee@users.noreply.github.com>

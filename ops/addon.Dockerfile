@@ -6,9 +6,18 @@
 # bestaan (ops/api.Dockerfile). Dit bestand is de tweede verpakking om dezelfde
 # code, niet een tweede versie van de applicatie.
 #
-# Let op: deze Dockerfile heet Dockerfile en staat in de root, omdat de
-# Supervisor de add-onmap als build-context gebruikt en dus bij de broncode moet
-# kunnen. Voor de compose-stack gebruik je ops/api.Dockerfile.
+# Deze Dockerfile wordt door de CI gebruikt, niet door de Supervisor. Het
+# resultaat gaat naar GitHub Container Registry en de add-on haalt het daar op.
+#
+# Waarom niet op het toestel bouwen: op Home Assistant OS krijgt de
+# build-container van BuildKit geen DNS, ook niet als de Supervisor-DNS werkt.
+# apt-get strandt dan op "Temporary failure resolving 'deb.debian.org'". Images
+# ophalen lukt op diezelfde machine wel.
+#
+# De build-context is de root van de repo, want er wordt uit api/, web/, shared/,
+# db/ en rootfs/ gekopieerd.
+#
+# Voor de compose-stack gebruik je ops/api.Dockerfile.
 
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-debian:bookworm
 

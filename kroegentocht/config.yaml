@@ -1,9 +1,19 @@
 # Home Assistant add-on manifest.
 #
-# Dit bestand staat in de root van de repo en niet in een submap, omdat de
-# Supervisor een add-on bouwt met de add-onmap als build-context. De Dockerfile
-# moet dus bij de broncode van api, web en shared kunnen. De hele repo is daarmee
-# de add-onmap: je kloont hem naar /addons/kroegentocht op de HA-machine.
+# Deze add-on wordt NIET op je toestel gebouwd. Het image komt kant en klaar uit
+# GitHub Container Registry, gebouwd door de CI van deze repo.
+#
+# Dat is een bewuste keuze, en de reden is concreet: op een Home Assistant
+# OS-machine kan de build-container van BuildKit geen DNS-namen oplossen, ook
+# niet als de Supervisor-DNS gewoon werkt. De build strandde daardoor op
+# "Temporary failure resolving 'deb.debian.org'". Images ophalen lukt op diezelfde
+# machine wel. Bijkomend voordeel: installeren duurt een minuut in plaats van
+# twintig, en de Supervisor blokkeert een pull niet als het systeem als
+# unsupported staat gemarkeerd.
+#
+# De Supervisor vult {arch} in. Bij amd64 haalt hij dus
+# ghcr.io/sanderrtjee/kroegentocht-amd64:<version> op. Het versienummer hieronder
+# moet overeenkomen met een tag die de CI heeft gepusht.
 #
 # Alles wat hier niet in staat is bewust weggelaten:
 # - geen ingress, want die zet de app achter een wisselend pad en dat breekt de
@@ -14,10 +24,11 @@
 # - geen privileged, geen host_network, geen hassio_api.
 
 name: Kroegentocht
-version: '1.0.0'
+version: "1.0.0"
 slug: kroegentocht
 description: Kroegentochten vastleggen en bezochte tenten op een kaart zetten
-url: https://github.com/sanderbuitenhuis/kroegentocht
+url: https://github.com/Sanderrtjee/kroegentocht
+image: ghcr.io/sanderrtjee/kroegentocht-{arch}
 arch:
   - amd64
 
@@ -48,15 +59,15 @@ backup_exclude:
   - tiles/**
 
 options:
-  invite_code: ''
+  invite_code: ""
   registration_enabled: true
-  public_base_url: ''
-  contact_email: ''
+  public_base_url: ""
+  contact_email: ""
   cookie_secure: true
   log_level: info
   tile_cache_ttl_days: 30
-  tile_upstream_template: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-  nominatim_base_url: 'https://nominatim.openstreetmap.org'
+  tile_upstream_template: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+  nominatim_base_url: "https://nominatim.openstreetmap.org"
 
 schema:
   # Verplicht, maar als str? gemarkeerd zodat de add-on met een lege waarde te
