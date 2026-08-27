@@ -122,34 +122,103 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Een script met CRLF-regeleindes maakt de container onstartbaar met een
-      # "no such file or directory" op een pad dat wel bestaat. Dat is op een
-      # Windows-werkplek een reeele fout, dus die controleren we hier hard.
-      - name: Controleren dat de s6-scripts LF gebruiken en uitvoerbaar zijn
+      # De controlescripts gaan via stdin de container in, niet als argument van
+      # bash -c. Dat scheelt een laag aanhalingstekens: een patroon met een
+      # carriage return erin overleeft dat nesten niet.
+      - name: Controleren dat de s6-diensten in het image kloppen
         run: |
-          docker run --rm --entrypoint /bin/bash kroegentocht-addon:ci -c '
-            set -eu
-            for f in /etc/s6-overlay/scripts/init-config \
-                     /etc/s6-overlay/scripts/init-postgres \
-                     /etc/s6-overlay/s6-rc.d/postgres/run \
-                     /etc/s6-overlay/s6-rc.d/api/run; do
-              test -x "$f" || { echo "niet uitvoerbaar: $f"; exit 1; }
-              if head -1 "$f" | grep -q $"\r"; then echo "CRLF: $f"; exit 1; fi
-            done
-            test -f /etc/s6-overlay/s6-rc.d/user/contents.d/api
-            test -f /etc/s6-overlay/s6-rc.d/postgres/down-signal
-            echo "s6-diensten in orde"
-          '
+          cat > check-s6.sh <<'SCRIPT'
+          set -eu
+          # Een script met CRLF-regeleindes maakt de container onstartbaar: de
+          # kernel zoekt dan een interpreter met een carriage return aan het eind
+          # van de naam en meldt "no such file or directory" op een pad dat wel
+          # bestaat. Op een Windows-werkplek is dat een reeel risico.
+          cr="$(printf '\r')"
+          for f in /etc/s6-overlay/scripts/init-config \
+                   /etc/s6-overlay/scripts/init-postgres \
+                   /etc/s6-overlay/s6-rc.d/postgres/run \
+                   /etc/s6-overlay/s6-rc.d/api/run; do
+            test -x "$f" || { echo "FOUT: niet uitvoerbaar: $f"; exit 1; }
+            if grep -q "$cr" "$f"; then echo "FOUT: CRLF-regeleindes in $f"; exit 1; fi
+            echo "  ok  $f"
+          done
+          for f in /etc/s6-overlay/s6-rc.d/user/contents.d/init-config \
+                   /etc/s6-overlay/s6-rc.d/user/contents.d/init-postgres \
+                   /etc/s6-overlay/s6-rc.d/user/contents.d/postgres \
+                   /etc/s6-overlay/s6-rc.d/user/contents.d/api \
+                   /etc/s6-overlay/s6-rc.d/postgres/down-signal; do
+            test -f "$f" || { echo "FOUT: ontbreekt: $f"; exit 1; }
+            echo "  ok  $f"
+          done
+          # SIGINT en niet SIGTERM: bij Postgres is SIGTERM een smart shutdown die
+          # wacht op de laatste client, en dan haalt de add-on de stoptimeout niet.
+          test "$(cat /etc/s6-overlay/s6-rc.d/postgres/down-signal)" = SIGINT
+          echo "s6-diensten in orde"
+          SCRIPT
+          docker run --rm -i --entrypoint /bin/bash kroegentocht-addon:ci < check-s6.sh
 
       - name: Controleren dat Postgres, PostGIS en Node in het image zitten
         run: |
-          docker run --rm --entrypoint /bin/bash kroegentocht-addon:ci -c '
-            set -eu
-            postgres --version
-            node --version
-            ls /usr/share/postgresql/17/extension/postgis.control > /dev/null
-            test -f /app/api/dist/index.js
-            test -f /app/web/dist/index.html
-            ls /app/db/migrations/*.sql > /dev/null
-            echo "image compleet"
-          '
+          cat > check-image.sh <<'SCRIPT'
+          set -eu
+          postgres --version
+          node --version
+          ls /usr/share/postgresql/17/extension/postgis.control > /dev/null
+          test -f /app/api/dist/index.js
+          test -f /app/web/dist/index.html
+          ls /app/db/migrations/*.sql > /dev/null
+          echo "image compleet"
+          SCRIPT
+          docker run --rm -i --entrypoint /bin/bash kroegentocht-addon:ci < check-image.sh
+
+      # De echte test: de add-on starten zoals de Supervisor dat doet. bashio
+      # leest de opties uit /data/options.json, dus met dat bestand en een leeg
+      # /data draait de hele keten: init-config, initdb, Postgres, de migraties en
+      # de api. Slaagt /readyz, dan werkt ook de read-only databaserol.
+      - name: Add-on starten en /readyz controleren
+        run: |
+          mkdir -p addon-data
+          cat > addon-data/options.json <<'JSON'
+          {
+            "invite_code": "ci-uitnodigingscode",
+            "registration_enabled": true,
+            "public_base_url": "http://127.0.0.1:8099",
+            "contact_email": "ci@voorbeeld.nl",
+            "cookie_secure": true,
+            "log_level": "info",
+            "tile_cache_ttl_days": 30,
+            "tile_upstream_template": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+            "nominatim_base_url": "https://nominatim.openstreetmap.org"
+          }
+          JSON
+          docker run -d --name kt-addon \
+            -v "${PWD}/addon-data:/data" \
+            -p 127.0.0.1:8099:3000 \
+            kroegentocht-addon:ci
+
+          ok=0
+          for _ in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:8099/readyz -o readyz.json 2>/dev/null; then
+              ok=1
+              break
+            fi
+            sleep 2
+          done
+
+          echo '--- logboek van de add-on ---'
+          docker logs kt-addon 2>&1 | tail -60
+
+          if [ "${ok}" != 1 ]; then
+            echo 'FOUT: /readyz antwoordde niet binnen 180 seconden'
+            exit 1
+          fi
+
+          echo '--- readyz ---'
+          cat readyz.json
+          grep -q '"database":"ok"' readyz.json
+          grep -q '"publicView":"ok"' readyz.json
+          echo 'add-on is opgekomen en beide databasepools werken'
+
+      - name: Add-on opruimen
+        if: always()
+        run: docker rm -f kt-addon 2>/dev/null || true
