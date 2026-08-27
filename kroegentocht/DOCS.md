@@ -48,7 +48,7 @@ Een kopie van een draaiende database is niet betrouwbaar terug te zetten.
 | `registration_enabled` | nee | Op `false` gaat de deur helemaal dicht, ook met een geldige code. Handig zodra iedereen binnen is. |
 | `public_base_url` | ja | Het adres waarop de app te bereiken is, bijvoorbeeld `https://kroegen.jouwdomein.nl`. Gaat mee in de User-Agent naar OpenStreetMap. |
 | `contact_email` | ja | Contactadres in die User-Agent. Het gebruiksbeleid van OpenStreetMap en Nominatim vraagt om een contactmogelijkheid. |
-| `cookie_secure` | nee | Laat dit op `true` staan als er TLS voor zit, en dat hoort er te zitten. |
+| `cookie_secure` | nee | Laat dit op `true` staan zodra er TLS voor zit. Op `false` kun je de app eerst op je eigen netwerk over plain http controleren; de app start dan met een waarschuwing in het logboek en laat ook upgrade-insecure-requests uit de Content Security Policy weg, want anders krijg je een lege pagina. Zet hem daarna weer aan. |
 | `log_level` | nee | `info` is genoeg. `debug` als je iets uitzoekt. |
 | `tile_cache_ttl_days` | nee | Hoe lang een gecachete kaarttegel meegaat. 30 dagen is netjes tegenover OpenStreetMap. |
 | `tile_upstream_template` | nee | Bron van de kaarttegels. Alleen wijzigen als je een eigen tileserver hebt. |

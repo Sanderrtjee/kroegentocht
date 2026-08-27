@@ -98,8 +98,32 @@ function load(): Env {
     );
     throw new Error(`Ongeldige omgevingsvariabelen:\n${lines.join('\n')}`);
   }
+  /**
+   * Onbeveiligde cookies in productie is een slecht idee, maar geen reden om te
+   * weigeren op te starten. Dat was het eerst wel, en dat bleek in de praktijk
+   * verkeerd: het maakte het onmogelijk om de applicatie eerst op het eigen
+   * netwerk te controleren voordat je hem achter een proxy met TLS zet. Dat is
+   * precies de volgorde die je wil aanhouden.
+   *
+   * Dus: een waarschuwing die je niet over het hoofd ziet, en verder starten.
+   */
   if (parsed.data.NODE_ENV === 'production' && !parsed.data.COOKIE_SECURE) {
-    throw new Error('COOKIE_SECURE mag in productie niet uit staan.');
+    process.stderr.write(
+      [
+        '',
+        '  ##############################################################',
+        '  #  LET OP: COOKIE_SECURE staat uit terwijl NODE_ENV op       #',
+        '  #  production staat.                                         #',
+        '  #                                                            #',
+        '  #  De sessiecookie gaat nu ook over onbeveiligd http mee.     #',
+        '  #  Op een eigen netwerk om even te kijken of alles werkt is   #',
+        '  #  dat te overzien. Zet dit weer aan zodra er TLS voor staat, #',
+        '  #  anders is een sessie mee te lezen door iedereen die het    #',
+        '  #  netwerkverkeer kan zien.                                   #',
+        '  ##############################################################',
+        '',
+      ].join('\n'),
+    );
   }
   return parsed.data;
 }

@@ -2,7 +2,7 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import fp from 'fastify-plugin';
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
-import { env, isProd } from '../config/env.js';
+import { env } from '../config/env.js';
 import { rateLimitKey } from '../lib/client-ip.js';
 
 /**
@@ -39,7 +39,17 @@ const securityPlugin: FastifyPluginAsync = async (app: FastifyInstance) => {
         'worker-src': ["'self'", 'blob:'],
         'manifest-src': ["'self'"],
         'frame-src': ["'none'"],
-        ...(isProd ? { 'upgrade-insecure-requests': [] } : {}),
+        /**
+         * upgrade-insecure-requests alleen als er echt TLS voor staat.
+         *
+         * Deze directive laat de browser elk http-adres omzetten naar https. Doe
+         * je dat terwijl de applicatie op het eigen netwerk over plain http
+         * bereikbaar is, dan probeert de browser de eigen scripts en stylesheets
+         * over https op te halen, mislukt dat, en krijg je een lege pagina zonder
+         * duidelijke fout. COOKIE_SECURE is hier het beste signaal voor "er staat
+         * TLS voor": dat is precies waarvoor die vlag bedoeld is.
+         */
+        ...(env.COOKIE_SECURE ? { 'upgrade-insecure-requests': [] } : {}),
       },
     },
     // TLS wordt door Nginx Proxy Manager afgehandeld. De header gaat mee naar
