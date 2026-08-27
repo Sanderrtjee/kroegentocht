@@ -99,6 +99,52 @@ anders heb je de add-on twee keer:
 rm -rf /addons/kroegentocht
 ```
 
+### 2b. Als het toevoegen van de repository geblokkeerd wordt
+
+Staat je systeem als `unsupported` gemarkeerd, dan weigert de Supervisor **alle**
+StoreManager-acties:
+
+```
+Error: 'StoreManager.add_repository' blocked from execution, unsupported OS version
+```
+
+Dan is er een omweg die wel werkt. Een **lokale** add-on in `/addons` wordt niet
+via StoreManager ingelezen maar bij het starten van de Supervisor, en dat pad is
+niet geblokkeerd. En omdat `config.yaml` een `image:` heeft, valt er niets te
+bouwen: de Supervisor haalt het image gewoon op.
+
+De add-onmap hoeft daarvoor alleen het manifest te bevatten, niet de broncode:
+
+```bash
+git clone --depth 1 https://github.com/Sanderrtjee/kroegentocht.git /tmp/kt && cp -r /tmp/kt/kroegentocht /addons/kroegentocht && rm -rf /tmp/kt
+```
+
+In `/addons/kroegentocht` staan daarna vier bestanden: `config.yaml`, `DOCS.md`,
+`icon.png` en `logo.png`. Samen een paar kilobyte.
+
+Dan de Supervisor laten herlezen:
+
+```bash
+ha supervisor restart
+```
+
+Wacht een halve minuut en controleer:
+
+```bash
+ha addons info local_kroegentocht 2>&1 | grep -E "^(name|version|state|build|image)"
+```
+
+`build: false` en een `image:`-regel betekenen dat hij gaat pullen in plaats van
+bouwen. Daarna staat hij in de store onder **Local add-ons** en duurt installeren
+ongeveer een minuut.
+
+Bijwerken gaat dan met hetzelfde `git clone`-commando hierboven, gevolgd door
+**⋮ → Controleer op updates** of een supervisor-herstart.
+
+Dit is een omweg om een blokkade heen, geen eindstation. Werk je OS bij zodra dat
+kan; dan verdwijnt de blokkade en kun je de nette repository-route uit stap 2
+gebruiken.
+
 ### 3. Configureren en starten
 
 Op het tabblad **Configuratie** minimaal deze drie invullen:
