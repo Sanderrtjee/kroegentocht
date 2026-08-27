@@ -1,0 +1,34 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+#
+# De Fastify-api als langlopende dienst.
+#
+# Wachten op Postgres gebeurt hier en niet in de applicatie: de api voert bij het
+# starten de migraties uit en dat heeft geen zin tegen een database die nog aan
+# het opkomen is. s6 heeft de dienst postgres al gestart voordat deze aan de beurt
+# is, maar "gestart" is niet hetzelfde als "accepteert verbindingen".
+
+set -euo pipefail
+
+# Beide bestanden zijn door init-config gemaakt.
+set -a
+# shellcheck source=/dev/null
+source /run/kroegentocht.env
+# shellcheck source=/dev/null
+source /data/secrets.env
+set +a
+
+echo "[api] wachten tot PostgreSQL verbindingen aanneemt"
+attempt=0
+until pg_isready --host=127.0.0.1 --port=5432 --username="${POSTGRES_USER}" \
+        --dbname="${POSTGRES_DB}" --quiet; do
+    attempt=$((attempt + 1))
+    if [[ ${attempt} -gt 60 ]]; then
+        echo "[api] PostgreSQL kwam na 60 seconden niet op. Zie de logregels van de dienst postgres."
+        exit 1
+    fi
+    sleep 1
+done
+echo "[api] PostgreSQL is klaar, api starten"
+
+exec s6-setuidgid ktapp /usr/local/bin/node /app/api/dist/index.js

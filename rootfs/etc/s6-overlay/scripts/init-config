@@ -1,0 +1,112 @@
+#!/usr/bin/with-contenv bashio
+# shellcheck shell=bash
+#
+# Zet de add-onopties om naar omgevingsvariabelen en genereert bij de eerste
+# start de geheimen.
+#
+# De geheimen worden hier gemaakt en niet door de gebruiker ingevuld. Dat is
+# bewust: een sessiegeheim en twee databasewachtwoorden zijn niets waar iemand een
+# keuze in hoeft te maken, en met de hand ingevulde wachtwoorden gaan in een
+# connection-URL nog wel eens stuk op een schuine streep of een apenstaartje.
+# Hexadecimaal is URL-veilig, dus dat probleem bestaat hier niet.
+#
+# /data/secrets.env staat in de backup van de add-on. Gooi hem niet weg: het
+# databasewachtwoord staat alleen daar, en zonder dat bestand komt de api niet
+# meer bij de bestaande database.
+
+set -euo pipefail
+
+RUNTIME_ENV=/run/kroegentocht.env
+SECRETS=/data/secrets.env
+
+bashio::log.info 'Configuratie klaarzetten'
+
+# --------------------------------------------------------------- validatie
+invite_code=$(bashio::config 'invite_code' '')
+public_base_url=$(bashio::config 'public_base_url' '')
+contact_email=$(bashio::config 'contact_email' '')
+
+problems=()
+if [[ -z "${invite_code}" || ${#invite_code} -lt 6 ]]; then
+    problems+=('invite_code: verplicht, minimaal 6 tekens. Dit is de code waarmee je vrienden een account kunnen maken.')
+fi
+if [[ ! "${public_base_url}" =~ ^https?:// ]]; then
+    problems+=('public_base_url: verplicht, bijvoorbeeld https://kroegen.jouwdomein.nl. Dit adres gaat mee in de User-Agent naar OpenStreetMap.')
+fi
+if [[ ! "${contact_email}" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]]; then
+    problems+=('contact_email: verplicht en moet een geldig e-mailadres zijn. Het gebruiksbeleid van OpenStreetMap en Nominatim vraagt om een contactmogelijkheid.')
+fi
+
+if [[ ${#problems[@]} -gt 0 ]]; then
+    bashio::log.error 'De configuratie is nog niet compleet:'
+    for problem in "${problems[@]}"; do
+        bashio::log.error "  - ${problem}"
+    done
+    bashio::exit.nok 'Vul de opties aan op het tabblad Configuratie en start de add-on opnieuw.'
+fi
+
+# ---------------------------------------------------------------- geheimen
+if [[ ! -f "${SECRETS}" ]]; then
+    bashio::log.info 'Eerste start: geheimen genereren in /data/secrets.env'
+    umask 077
+    {
+        echo "# Automatisch gegenereerd bij de eerste start. Niet weggooien:"
+        echo "# zonder deze waarden komt de api niet meer bij de bestaande database."
+        echo "SESSION_SECRET=$(openssl rand -hex 32)"
+        echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)"
+        echo "PUBLIC_DB_PASSWORD=$(openssl rand -hex 24)"
+    } > "${SECRETS}"
+    chmod 600 "${SECRETS}"
+else
+    bashio::log.info 'Bestaande geheimen uit /data/secrets.env gebruiken'
+fi
+
+# ------------------------------------------------------------ omgevingsvars
+POSTGRES_DB=kroegentocht
+POSTGRES_USER=kroeg
+
+{
+    echo "POSTGRES_DB=${POSTGRES_DB}"
+    echo "POSTGRES_USER=${POSTGRES_USER}"
+    echo "NODE_ENV=production"
+    echo "HOST=0.0.0.0"
+    echo "PORT=3000"
+    echo "LOG_LEVEL=$(bashio::config 'log_level' 'info')"
+
+    echo "INVITE_CODE=${invite_code}"
+    echo "REGISTRATION_ENABLED=$(bashio::config 'registration_enabled' 'true')"
+    echo "COOKIE_SECURE=$(bashio::config 'cookie_secure' 'true')"
+    echo "PUBLIC_BASE_URL=${public_base_url}"
+    echo "CONTACT_EMAIL=${contact_email}"
+
+    echo "MEDIA_ROOT=/data/media"
+    echo "TILE_CACHE_ROOT=/data/tiles"
+    echo "WEB_DIST_PATH=/app/web/dist"
+    echo "MIGRATIONS_DIR=/app/db/migrations"
+
+    echo "TILE_CACHE_TTL_DAYS=$(bashio::config 'tile_cache_ttl_days' '30')"
+    echo "TILE_UPSTREAM_TEMPLATE=$(bashio::config 'tile_upstream_template')"
+    echo "NOMINATIM_BASE_URL=$(bashio::config 'nominatim_base_url')"
+
+    # Het add-onnetwerk van Home Assistant is 172.30.32.0/23. Alleen vanaf de
+    # private bereiken worden proxyheaders vertrouwd, zodat niemand van buiten
+    # een X-Forwarded-For kan verzinnen om de rate limiting te omzeilen.
+    echo "TRUSTED_PROXY_CIDRS=127.0.0.1,::1,172.30.32.0/23,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+} > "${RUNTIME_ENV}"
+
+chmod 600 "${RUNTIME_ENV}"
+
+# Databaseverbindingen. Postgres luistert alleen op de loopback binnen deze
+# container, dus er is geen netwerkpad naar de database van buiten.
+# shellcheck source=/dev/null
+source "${SECRETS}"
+{
+    echo "DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:5432/${POSTGRES_DB}"
+    echo "DATABASE_PUBLIC_URL=postgresql://kroeg_public:${PUBLIC_DB_PASSWORD}@127.0.0.1:5432/${POSTGRES_DB}"
+} >> "${RUNTIME_ENV}"
+
+# ------------------------------------------------------------------ mappen
+mkdir -p /data/media /data/tiles
+chown -R ktapp:ktapp /data/media /data/tiles
+
+bashio::log.info 'Configuratie staat klaar'

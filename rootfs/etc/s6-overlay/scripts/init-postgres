@@ -1,0 +1,102 @@
+#!/usr/bin/with-contenv bashio
+# shellcheck shell=bash
+#
+# Initialiseert de database in /data/postgres bij de eerste start.
+#
+# /data is het persistente volume van de add-on en zit in een Home Assistant
+# backup. Daarom staat PGDATA daar en niet op de standaardplek van het
+# Debian-pakket; die map is in de Dockerfile weggehaald om verwarring te
+# voorkomen.
+#
+# Wat hier gebeurt gebeurt precies één keer, tegen een tijdelijke server die
+# alleen op een unix socket luistert. De echte server wordt daarna door de
+# s6-dienst gestart. De migraties draait de api zelf.
+
+set -euo pipefail
+
+PGDATA=/data/postgres
+SOCKET_DIR=/run/postgresql
+
+# shellcheck source=/dev/null
+source /data/secrets.env
+# shellcheck source=/dev/null
+source /run/kroegentocht.env
+
+mkdir -p "${SOCKET_DIR}"
+chown postgres:postgres "${SOCKET_DIR}"
+
+mkdir -p /data/postgres
+chown postgres:postgres /data/postgres
+chmod 700 /data/postgres
+
+if [[ -f "${PGDATA}/PG_VERSION" ]]; then
+    bashio::log.info "Bestaande database gevonden (PostgreSQL $(cat "${PGDATA}/PG_VERSION"))"
+    exit 0
+fi
+
+bashio::log.info 'Eerste start: database initialiseren in /data/postgres'
+
+# --auth-local=trust: binnen deze container is de socket alleen bereikbaar voor
+# root en postgres, en de api verbindt over de loopback met een wachtwoord.
+# --auth-host=scram-sha-256 geldt dus voor alles wat de api en de read-only rol
+# doen.
+s6-setuidgid postgres initdb \
+    --pgdata="${PGDATA}" \
+    --encoding=UTF8 \
+    --locale=C.UTF-8 \
+    --auth-local=trust \
+    --auth-host=scram-sha-256
+
+# Alleen de loopback binnen de container. Er is geen netwerkpad naar deze
+# database van buiten de add-on.
+cat >> "${PGDATA}/postgresql.conf" <<'EOF'
+
+# --- toegevoegd door de Kroegentocht add-on ---
+listen_addresses = '127.0.0.1'
+unix_socket_directories = '/run/postgresql'
+# Afgestemd op een machine die deze database deelt met Home Assistant. Zuiniger
+# dan de compose-variant, want daar heeft de database een hele container voor zich.
+max_connections = 30
+shared_buffers = 256MB
+effective_cache_size = 768MB
+work_mem = 8MB
+maintenance_work_mem = 64MB
+random_page_cost = 1.1
+log_min_duration_statement = 1000
+EOF
+
+cat > "${PGDATA}/pg_hba.conf" <<'EOF'
+# Alleen binnen deze container. Zie postgresql.conf: listen_addresses is loopback.
+local   all   all                  trust
+host    all   all   127.0.0.1/32   scram-sha-256
+host    all   all   ::1/128        scram-sha-256
+EOF
+chown postgres:postgres "${PGDATA}/pg_hba.conf"
+chmod 600 "${PGDATA}/pg_hba.conf"
+
+bashio::log.info 'Tijdelijke server starten om de rol en de database aan te maken'
+s6-setuidgid postgres pg_ctl \
+    --pgdata="${PGDATA}" \
+    --options="-c listen_addresses='' -c unix_socket_directories=${SOCKET_DIR}" \
+    --wait --timeout=60 start
+
+cleanup() {
+    s6-setuidgid postgres pg_ctl --pgdata="${PGDATA}" --mode=fast --wait --timeout=60 stop || true
+}
+trap cleanup EXIT
+
+# De eigenaarsrol moet superuser zijn: de migraties maken de extensies postgis,
+# pgcrypto, pg_trgm en citext aan, en de rol kroeg_public met zijn rechten.
+s6-setuidgid postgres psql --quiet --no-psqlrc --dbname=postgres \
+    --set=role="${POSTGRES_USER}" --set=pw="${POSTGRES_PASSWORD}" <<'EOF'
+SELECT format('CREATE ROLE %I WITH LOGIN SUPERUSER PASSWORD %L', :'role', :'pw')
+\gexec
+EOF
+
+s6-setuidgid postgres psql --quiet --no-psqlrc --dbname=postgres \
+    --set=db="${POSTGRES_DB}" --set=role="${POSTGRES_USER}" <<'EOF'
+SELECT format('CREATE DATABASE %I OWNER %I', :'db', :'role')
+\gexec
+EOF
+
+bashio::log.info "Database ${POSTGRES_DB} en rol ${POSTGRES_USER} aangemaakt"

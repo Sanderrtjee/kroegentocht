@@ -1,0 +1,73 @@
+# Home Assistant add-on manifest.
+#
+# Dit bestand staat in de root van de repo en niet in een submap, omdat de
+# Supervisor een add-on bouwt met de add-onmap als build-context. De Dockerfile
+# moet dus bij de broncode van api, web en shared kunnen. De hele repo is daarmee
+# de add-onmap: je kloont hem naar /addons/kroegentocht op de HA-machine.
+#
+# Alles wat hier niet in staat is bewust weggelaten:
+# - geen ingress, want die zet de app achter een wisselend pad en dat breekt de
+#   service worker en dus de offline wachtrij, precies de functie waarom deze app
+#   in een kroeg bruikbaar is. Zet Nginx Proxy Manager ervoor.
+# - geen map naar /config, /share of /media, want de add-on heeft niets buiten
+#   zijn eigen /data nodig.
+# - geen privileged, geen host_network, geen hassio_api.
+
+name: Kroegentocht
+version: '1.0.0'
+slug: kroegentocht
+description: Kroegentochten vastleggen en bezochte tenten op een kaart zetten
+url: https://github.com/sanderbuitenhuis/kroegentocht
+arch:
+  - amd64
+
+# s6-overlay uit de basisimage is pid 1; Docker mag daar geen init voor zetten.
+init: false
+
+startup: application
+boot: auto
+
+ports:
+  3000/tcp: 8099
+ports_description:
+  3000/tcp: >-
+    Webinterface. Zet Nginx Proxy Manager hiervoor voor TLS. Alleen nodig als je
+    de proxy niet via het interne add-onnetwerk laat verbinden.
+
+# Herstart de add-on als poort 3000 niet meer antwoordt.
+watchdog: tcp://[HOST]:[PORT:3000]
+
+# cold: de Supervisor stopt de add-on tijdens een backup. Dat is voor een
+# database geen luxe maar een voorwaarde: een kopie van een draaiende PGDATA is
+# niet betrouwbaar terug te zetten. Postgres krijgt bij het stoppen een fast
+# shutdown, dus de datamap staat schoon op het moment dat de backup hem inleest.
+backup: cold
+
+# De tegelcache hoeft niet mee in de backup; die loopt zichzelf weer vol.
+backup_exclude:
+  - tiles/**
+
+options:
+  invite_code: ''
+  registration_enabled: true
+  public_base_url: ''
+  contact_email: ''
+  cookie_secure: true
+  log_level: info
+  tile_cache_ttl_days: 30
+  tile_upstream_template: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+  nominatim_base_url: 'https://nominatim.openstreetmap.org'
+
+schema:
+  # Verplicht, maar als str? gemarkeerd zodat de add-on met een lege waarde te
+  # installeren is. De controle gebeurt bij het opstarten, met een leesbare
+  # melding in het logboek in plaats van een schemafout.
+  invite_code: str?
+  registration_enabled: bool
+  public_base_url: str?
+  contact_email: str?
+  cookie_secure: bool
+  log_level: list(trace|debug|info|warn|error|fatal|silent)
+  tile_cache_ttl_days: int(1,365)
+  tile_upstream_template: str
+  nominatim_base_url: str

@@ -1,0 +1,155 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Wekelijks, zodat een nieuw gepubliceerde kwetsbaarheid in een bestaande
+  # dependency ook zonder commit wordt opgemerkt.
+  schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_DB: kroegentocht_test
+          POSTGRES_USER: kroeg_test
+          POSTGRES_PASSWORD: kroeg_test_wachtwoord
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U kroeg_test -d kroegentocht_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Afhankelijkheden installeren
+        run: npm ci
+
+      # De auditstap staat vooraan en breekt de build bij een bekende
+      # kwetsbaarheid met ernst high of hoger in de productieafhankelijkheden.
+      # Devdependencies staan er niet in: die komen niet in het image terecht.
+      - name: Audit van productieafhankelijkheden
+        run: npm run audit:ci
+
+      # Devdependencies wel controleren, maar zonder de build te breken. Een
+      # kwetsbaarheid in een buildtool is een aandachtspunt, geen productierisico.
+      - name: Audit van alle afhankelijkheden (informatief)
+        run: npm audit --audit-level=moderate || true
+
+      - name: Bouwen
+        run: npm run build
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unittests
+        run: npm run test:unit
+
+      - name: Integratietests
+        run: npm run test:integration
+        env:
+          TEST_DB_HOST: 127.0.0.1
+          TEST_DB_PORT: '55432'
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Alleen bouwen, niet pushen: dit is een zelf gehoste applicatie zonder
+      # registry. De stap bestaat om te merken dat het image nog bouwt.
+      - name: Api-image bouwen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ops/api.Dockerfile
+          push: false
+          load: true
+          tags: kroegentocht-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Backup-image bouwen
+        uses: docker/build-push-action@v6
+        with:
+          context: ops/backup
+          file: ops/backup/Dockerfile
+          push: false
+          tags: kroegentocht-backup:ci
+
+      - name: Controleren dat de api als non-root draait
+        run: |
+          user="$(docker image inspect kroegentocht-api:ci --format '{{.Config.User}}')"
+          echo "image draait als: ${user}"
+          test "${user}" = "node"
+
+  addon-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # De Home Assistant-add-on. De Supervisor geeft BUILD_FROM mee op basis van
+      # build.yaml; hier doen we dat met de hand zodat het buiten Home Assistant
+      # ook te bouwen is.
+      - name: Add-onimage bouwen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          build-args: |
+            BUILD_FROM=ghcr.io/home-assistant/amd64-base-debian:bookworm
+          push: false
+          load: true
+          tags: kroegentocht-addon:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Een script met CRLF-regeleindes maakt de container onstartbaar met een
+      # "no such file or directory" op een pad dat wel bestaat. Dat is op een
+      # Windows-werkplek een reeele fout, dus die controleren we hier hard.
+      - name: Controleren dat de s6-scripts LF gebruiken en uitvoerbaar zijn
+        run: |
+          docker run --rm --entrypoint /bin/bash kroegentocht-addon:ci -c '
+            set -eu
+            for f in /etc/s6-overlay/scripts/init-config \
+                     /etc/s6-overlay/scripts/init-postgres \
+                     /etc/s6-overlay/s6-rc.d/postgres/run \
+                     /etc/s6-overlay/s6-rc.d/api/run; do
+              test -x "$f" || { echo "niet uitvoerbaar: $f"; exit 1; }
+              if head -1 "$f" | grep -q $"\r"; then echo "CRLF: $f"; exit 1; fi
+            done
+            test -f /etc/s6-overlay/s6-rc.d/user/contents.d/api
+            test -f /etc/s6-overlay/s6-rc.d/postgres/down-signal
+            echo "s6-diensten in orde"
+          '
+
+      - name: Controleren dat Postgres, PostGIS en Node in het image zitten
+        run: |
+          docker run --rm --entrypoint /bin/bash kroegentocht-addon:ci -c '
+            set -eu
+            postgres --version
+            node --version
+            ls /usr/share/postgresql/17/extension/postgis.control > /dev/null
+            test -f /app/api/dist/index.js
+            test -f /app/web/dist/index.html
+            ls /app/db/migrations/*.sql > /dev/null
+            echo "image compleet"
+          '

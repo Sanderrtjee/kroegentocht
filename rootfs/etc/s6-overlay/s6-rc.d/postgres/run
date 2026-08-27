@@ -1,0 +1,22 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+#
+# PostgreSQL als langlopende dienst.
+#
+# De configuratie staat in /data/postgres/postgresql.conf, gezet door
+# init-postgres. Hier staat alleen wat niet in een configbestand hoort.
+#
+# down-signal in deze map staat op SIGINT. Dat is de "fast shutdown" van
+# Postgres: hij verbreekt openstaande verbindingen en schrijft een schone
+# checkpoint. Het standaardsignaal SIGTERM is bij Postgres een "smart shutdown"
+# die wacht tot de laatste client zelf weggaat, en dan haalt de add-on de
+# stoptimeout van de Supervisor niet. Dat is precies het scenario waarin een
+# backup een halfbakken datamap oppikt.
+
+set -euo pipefail
+
+mkdir -p /run/postgresql
+chown postgres:postgres /run/postgresql
+
+exec s6-setuidgid postgres \
+    /usr/lib/postgresql/17/bin/postgres -D /data/postgres

@@ -1,0 +1,19 @@
+# Basisimage per architectuur. De Supervisor geeft dit als build-arg BUILD_FROM
+# aan de Dockerfile.
+#
+# Alleen amd64: de doelmachine is een HP EliteDesk 800 G3 DM met een i5-7400.
+# Meer architecturen toevoegen kan later, maar dan moet je wel controleren dat
+# PostGIS en de voorgebouwde binaries van sharp en @node-rs/argon2 voor die
+# architectuur bestaan.
+#
+# base-debian in plaats van het gewone base-image op Alpine: sharp en
+# @node-rs/argon2 hebben voorgebouwde binaries voor glibc, en PostgreSQL 17 met
+# PostGIS is op Debian via de PGDG-repository een kwestie van apt-get.
+
+build_from:
+  amd64: ghcr.io/home-assistant/amd64-base-debian:bookworm
+
+labels:
+  org.opencontainers.image.title: Kroegentocht
+  org.opencontainers.image.description: Kroegentochten vastleggen en op een kaart zetten
+  org.opencontainers.image.licenses: MIT

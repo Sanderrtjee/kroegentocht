@@ -1,0 +1,174 @@
+# Kroegentocht op een homelab, achter Nginx Proxy Manager.
+#
+# Alleen de api publiceert een poort. De database is uitsluitend bereikbaar op
+# het interne netwerk van deze stack en heeft geen enkele poort naar buiten.
+#
+# TLS wordt bij de proxy afgehandeld, dus de api luistert zelf op plain http.
+#
+# Resourcelimieten zijn afgestemd op een i5-7400 met 16 GB: de stack mag samen
+# maximaal ongeveer 3,5 van de 4 kernen en 3,5 GB gebruiken, zodat er ruimte
+# overblijft voor de rest van de machine.
+
+name: kroegentocht
+
+services:
+  db:
+    # PostgreSQL 17 met PostGIS. Pin op een concrete tag zodat een herstart
+    # geen majorversie meesleept; een major upgrade vraagt pg_upgrade.
+    image: postgis/postgis:17-3.5
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kroegentocht}
+      POSTGRES_USER: ${POSTGRES_USER:-kroeg}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is verplicht}
+      # Scheelt schijfruimte en io bij het herstarten na een nette stop.
+      POSTGRES_INITDB_ARGS: '--data-checksums'
+      TZ: ${TZ:-Europe/Amsterdam}
+    command:
+      - postgres
+      # Instellingen voor een kleine machine met een handvol gebruikers.
+      - -c
+      - max_connections=50
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - log_min_duration_statement=1000
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-kroeg} -d ${POSTGRES_DB:-kroegentocht}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2G
+    security_opt:
+      - no-new-privileges:true
+
+  api:
+    build:
+      context: .
+      dockerfile: ops/api.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PORT: 3000
+      HOST: 0.0.0.0
+      TZ: ${TZ:-Europe/Amsterdam}
+
+      # Volledige rechten, voor al het gewone werk.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-kroeg}:${POSTGRES_PASSWORD:?}@db:5432/${POSTGRES_DB:-kroegentocht}
+      # Read-only rol voor de anonieme publicatielaag. Deze rol wordt bij de
+      # migratie aangemaakt en kan de tabel visits niet lezen.
+      DATABASE_PUBLIC_URL: postgresql://kroeg_public:${PUBLIC_DB_PASSWORD:?PUBLIC_DB_PASSWORD is verplicht}@db:5432/${POSTGRES_DB:-kroegentocht}
+
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is verplicht}
+      INVITE_CODE: ${INVITE_CODE:?INVITE_CODE is verplicht}
+      REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-true}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?PUBLIC_BASE_URL is verplicht}
+      CONTACT_EMAIL: ${CONTACT_EMAIL:?CONTACT_EMAIL is verplicht}
+
+      # Alleen headers van de proxy uit deze bereiken worden vertrouwd voor het
+      # echte client-IP. Standaard de private ranges, wat overeenkomt met een
+      # Nginx Proxy Manager op hetzelfde Docker-netwerk.
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7}
+
+      TILE_CACHE_TTL_DAYS: ${TILE_CACHE_TTL_DAYS:-30}
+      TILE_UPSTREAM_TEMPLATE: ${TILE_UPSTREAM_TEMPLATE:-https://tile.openstreetmap.org/{z}/{x}/{y}.png}
+      NOMINATIM_BASE_URL: ${NOMINATIM_BASE_URL:-https://nominatim.openstreetmap.org}
+    ports:
+      # Standaard alleen op de loopback van de host, want de proxy zit ervoor.
+      # Draait Nginx Proxy Manager zelf in een container, gebruik dan
+      # compose.npm-network.yaml (zie README) of zet API_BIND op 0.0.0.0.
+      - '${API_BIND:-127.0.0.1}:${API_PORT:-8080}:3000'
+    volumes:
+      - media:/var/lib/kroegentocht/media
+      - tiles:/var/lib/kroegentocht/tiles
+    networks:
+      - internal
+    # De applicatie hoeft alleen in de twee volumes te schrijven. De rest van het
+    # bestandssysteem staat op read-only, inclusief /app.
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+
+  backup:
+    build:
+      context: ops/backup
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGPORT: '5432'
+      PGUSER: ${POSTGRES_USER:-kroeg}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?}
+      PGDATABASE: ${POSTGRES_DB:-kroegentocht}
+      TZ: ${TZ:-Europe/Amsterdam}
+      # Tijdstip van de dagelijkse backup, in de tijdzone hierboven.
+      BACKUP_AT: ${BACKUP_AT:-03:30}
+      RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      # Een keer draaien zodra de container start, zodat je niet tot morgen hoeft
+      # te wachten om te zien of het werkt.
+      BACKUP_ON_START: ${BACKUP_ON_START:-true}
+    volumes:
+      - backups:/backups
+      # Read-only: de backup hoeft de media alleen te lezen.
+      - media:/data/media:ro
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  # Op een standaard Docker-installatie landen deze onder
+  # /var/lib/docker/volumes/kroegentocht_<naam>/_data
+  #   kroegentocht_pgdata   de database
+  #   kroegentocht_media    de fotobestanden (webp, zonder metadata)
+  #   kroegentocht_tiles    de kaarttegelcache, mag je altijd weggooien
+  #   kroegentocht_backups  de dagelijkse dumps en de mediakopie
+  # Zet ze desnoods op een andere schijf met een bind mount; zie README.
+  pgdata:
+  media:
+  tiles:
+  backups:

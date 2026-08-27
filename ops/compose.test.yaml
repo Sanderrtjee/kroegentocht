@@ -1,0 +1,29 @@
+# Wegwerpdatabase voor de integratietests.
+#
+# Draait op poort 55432 zodat hij niet in de weg zit van een echte installatie,
+# en zonder volume, zodat elke start schoon begint.
+#
+#   docker compose -f ops/compose.test.yaml up -d
+#   npm run test:integration -w api
+#   docker compose -f ops/compose.test.yaml down
+
+name: kroegentocht-test
+
+services:
+  db:
+    image: postgis/postgis:17-3.5
+    environment:
+      POSTGRES_DB: kroegentocht_test
+      POSTGRES_USER: kroeg_test
+      POSTGRES_PASSWORD: kroeg_test_wachtwoord
+    ports:
+      - '127.0.0.1:55432:5432'
+    # Geen volume: de data mag na het afsluiten verdwijnen. tmpfs maakt de tests
+    # bovendien merkbaar sneller.
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U kroeg_test -d kroegentocht_test']
+      interval: 3s
+      timeout: 3s
+      retries: 20

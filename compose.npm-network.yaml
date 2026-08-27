@@ -1,0 +1,36 @@
+# Overrides voor de situatie dat Nginx Proxy Manager zelf in Docker draait, in
+# een eigen compose-stack.
+#
+# Dan hoeft de api geen poort op de host te publiceren: de proxy praat direct met
+# de container over een gedeeld netwerk. Dat is een poort minder open op de host.
+#
+# Eenmalig het gedeelde netwerk maken:
+#
+#   docker network create proxy
+#
+# Nginx Proxy Manager aan datzelfde netwerk hangen (in zijn eigen compose):
+#
+#   networks:
+#     proxy:
+#       external: true
+#
+# Daarna deze stack starten met beide bestanden:
+#
+#   docker compose -f compose.yaml -f compose.npm-network.yaml up -d --build
+#
+# In Nginx Proxy Manager wijs je de proxy host naar hostnaam "kroegentocht-api"
+# en poort 3000.
+
+services:
+  api:
+    # Geen poort meer op de host.
+    ports: !reset []
+    networks:
+      internal:
+      proxy:
+        aliases:
+          - kroegentocht-api
+
+networks:
+  proxy:
+    external: true

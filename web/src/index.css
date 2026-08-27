@@ -1,0 +1,116 @@
+@import 'tailwindcss';
+@import 'leaflet/dist/leaflet.css';
+@import 'leaflet.markercluster/dist/MarkerCluster.css';
+@import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+
+/*
+  Tailwind 4 werkt met CSS-variabelen in plaats van een configbestand.
+  De palet-keuze is donker, want deze app wordt vooral 's avonds in een kroeg
+  gebruikt en een wit scherm is dan onaangenaam fel.
+*/
+@theme {
+  --color-nacht-950: #080c16;
+  --color-nacht-900: #0f172a;
+  --color-nacht-800: #1a2337;
+  --color-nacht-700: #27324a;
+  --color-nacht-600: #3b4763;
+  --color-nacht-400: #7c89a8;
+  --color-nacht-200: #c3cadb;
+  --color-bier-500: #d99a2b;
+  --color-bier-400: #eab558;
+  --color-bier-300: #f3ce8e;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-nacht-950);
+  color: var(--color-nacht-200);
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Leaflet gaat uit van een lichte kaart; dit haalt de felle randen eraf. */
+.leaflet-container {
+  background: var(--color-nacht-900);
+  font-family: inherit;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--color-nacht-800);
+  color: var(--color-nacht-200);
+}
+
+.leaflet-popup-content {
+  margin: 0.75rem 0.9rem;
+  line-height: 1.4;
+}
+
+.leaflet-control-attribution {
+  background: rgb(8 12 22 / 80%) !important;
+  color: var(--color-nacht-400) !important;
+  font-size: 0.7rem;
+}
+
+.leaflet-control-attribution a {
+  color: var(--color-bier-400) !important;
+}
+
+/* Markers van de twee lagen moeten met een blik te onderscheiden zijn. */
+.kt-marker {
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  border-width: 2px;
+  border-style: solid;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.kt-marker-mine {
+  background: var(--color-bier-500);
+  border-color: #fff5e0;
+  color: #241703;
+}
+
+.kt-marker-public {
+  /* Ruit in plaats van rond, zodat de lagen ook zonder kleur te scheiden zijn. */
+  background: #2f6f8f;
+  border-color: #bfe4f5;
+  color: #ecf9ff;
+  border-radius: 0.25rem;
+  transform: rotate(45deg);
+}
+
+.kt-marker-public > span {
+  transform: rotate(-45deg);
+}
+
+.kt-cluster {
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #241703;
+  background: var(--color-bier-400);
+  border: 2px solid #fff5e0;
+}
+
+.kt-cluster-public {
+  background: #4e9fc4;
+  border-color: #bfe4f5;
+  color: #06212e;
+}

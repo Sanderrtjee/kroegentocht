@@ -1,0 +1,36 @@
+# Regeleindes vastzetten.
+#
+# Dit is geen cosmetiek. Deze repo wordt op een Windows-machine bewerkt en op
+# Linux gebouwd. Een shellscript of een s6-dienstbestand met CRLF maakt de
+# container onstartbaar: de kernel leest de shebang als "/usr/bin/with-contenv
+# bashio\r" en meldt dat het bestand niet bestaat. Met git core.autocrlf=true op
+# Windows gebeurt dat zonder dat je het ziet.
+#
+# Alles standaard normaliseren naar LF in de repo, en de bestanden die op Linux
+# uitgevoerd worden expliciet ook in de working tree op LF houden.
+
+* text=auto eol=lf
+
+*.sh              text eol=lf
+Dockerfile        text eol=lf
+*.Dockerfile      text eol=lf
+*.yaml            text eol=lf
+*.yml             text eol=lf
+*.sql             text eol=lf
+*.ts              text eol=lf
+*.tsx             text eol=lf
+*.json            text eol=lf
+*.css             text eol=lf
+*.html            text eol=lf
+*.md              text eol=lf
+
+# De s6-dienstbestanden hebben geen extensie.
+rootfs/**         text eol=lf
+
+# PowerShell hoort op Windows CRLF te hebben.
+*.ps1             text eol=crlf
+
+# Binaire bestanden nooit aanraken.
+*.png             binary
+*.webp            binary
+*.ico             binary

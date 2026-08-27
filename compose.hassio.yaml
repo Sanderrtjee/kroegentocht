@@ -1,0 +1,69 @@
+# Overrides voor Home Assistant OS.
+#
+# Gebruik dit bestand samen met compose.yaml zodra de stack op een
+# Home Assistant OS-machine draait, via de Portainer-add-on. Het regelt drie
+# dingen die daar anders zijn dan op een gewone Docker-host.
+#
+# 1. Zuiniger resourcelimieten. Home Assistant is op die machine de belangrijkste
+#    dienst en moet niet verhongeren omdat iemand een kroeg vastlegt. De stack
+#    mag samen ongeveer de helft van een vierkernmachine gebruiken in plaats van
+#    bijna alles.
+#
+# 2. De api komt ook op het netwerk "hassio" te staan. Dat netwerk maakt Home
+#    Assistant zelf aan en alle add-ons hangen eraan, dus de Nginx Proxy
+#    Manager-add-on kan de api daarna op naam bereiken zonder dat er een poort op
+#    de host open hoeft. Het interne netwerk met de database blijft gescheiden.
+#
+# 3. De backups gaan naar /share in plaats van naar een Docker-volume. Docker
+#    volumes zitten niet in een Home Assistant-backup; /share wel, bij een volledige
+#    backup. Zo verdwijnt je database niet als je Home Assistant opnieuw moet
+#    opzetten.
+#
+# Starten (of in Portainer als extra compose-pad opgeven):
+#
+#   docker compose -f compose.yaml -f compose.hassio.yaml up -d --build
+#
+# Let op: dit vervangt de map die de backups bevat. Maak hem eerst aan, met de
+# eigenaar die de backupcontainer gebruikt (uid 70, de postgres-gebruiker):
+#
+#   mkdir -p /share/kroegentocht-backups
+#   chown 70:70 /share/kroegentocht-backups
+#
+# Controleer waar /share op jouw installatie fysiek staat. Standaard is dat
+# /mnt/data/supervisor/share; kijk met "ls /mnt/data/supervisor" of dat klopt.
+
+services:
+  db:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  api:
+    networks:
+      internal:
+      hassio:
+        aliases:
+          - kroegentocht-api
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 768M
+
+  backup:
+    volumes:
+      # Zelfde doelpad als in compose.yaml, dus dit vervangt het named volume.
+      - /mnt/data/supervisor/share/kroegentocht-backups:/backups
+      - media:/data/media:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+
+networks:
+  # Bestaat al op Home Assistant OS; wordt hier niet aangemaakt.
+  hassio:
+    external: true
