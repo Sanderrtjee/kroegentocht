@@ -73,7 +73,7 @@ function QueueSection() {
       )}
       {items.length > 0 ? (
         <div className="mt-3">
-          <Button variant="secondary" onClick={() => void flushQueue()} disabled={!online}>
+          <Button variant="secondary" onClick={() => void flushQueue({ includeFailed: true })} disabled={!online}>
             Nu proberen te versturen
           </Button>
         </div>

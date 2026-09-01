@@ -34,7 +34,7 @@ export function Layout() {
               : `Offline. ${items.length} bezoek${items.length === 1 ? '' : 'en'} in de wachtrij, niets gaat verloren.`}
           </span>
           {online && items.length > 0 ? (
-            <Button variant="secondary" onClick={() => void flushQueue()}>
+            <Button variant="secondary" onClick={() => void flushQueue({ includeFailed: true })}>
               Nu versturen
             </Button>
           ) : null}
