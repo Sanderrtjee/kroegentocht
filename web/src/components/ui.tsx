@@ -84,7 +84,12 @@ export function Field({
   children: ReactNode;
 }) {
   return (
-    <label className="block">
+    // min-w-0: zonder dit krimpt een grid-kolom niet onder de intrinsieke
+    // breedte van zijn inhoud. Een native <input type="date"> heeft op iOS een
+    // vaste minimumbreedte voor dag/maand/jaar plus het kalendericoontje, breder
+    // dan de helft van een telefoonscherm. In een grid-cols-2 duwde dat de tweede
+    // kolom buiten het scherm; met min-w-0 mag het veld zelf krimpen.
+    <label className="block min-w-0">
       <span className="mb-1.5 block text-sm font-medium text-ink">{label}</span>
       {children}
       {hint ? <span className="mt-1 block text-xs text-ink-soft">{hint}</span> : null}
