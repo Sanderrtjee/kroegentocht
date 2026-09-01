@@ -1,28 +1,83 @@
+/*
+  Zelf gehoste fonts via Fontsource, alleen de latin-subset.
+
+  Bewust niet via fonts.googleapis.com. Drie redenen: de Content Security Policy
+  houdt font-src op 'self' zodat er geen derde partij bij hoeft, er lekt geen
+  IP-adres van een gebruiker naar Google, en de PWA werkt hierdoor ook offline.
+  Vite bundelt de woff2-bestanden mee in dist/assets.
+
+  Alleen de gewichten die echt gebruikt worden. Elk extra gewicht is een bestand
+  dat een telefoon met slechte dekking moet ophalen, en dat is precies de
+  situatie waarin deze app gebruikt wordt.
+*/
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-500.css';
+@import '@fontsource/poppins/latin-600.css';
+@import '@fontsource/poppins/latin-700.css';
+@import '@fontsource/caveat/latin-600.css';
+
 @import 'tailwindcss';
 @import 'leaflet/dist/leaflet.css';
 @import 'leaflet.markercluster/dist/MarkerCluster.css';
 @import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 
 /*
-  Tailwind 4 werkt met CSS-variabelen in plaats van een configbestand.
-  De palet-keuze is donker, want deze app wordt vooral 's avonds in een kroeg
-  gebruikt en een wit scherm is dan onaangenaam fel.
+  Palet.
+
+  De merkkleuren staan hier zoals ze bedoeld zijn, met per kleur een donkerder
+  variant op -ink. Dat is geen smaakkwestie maar een leesbaarheidskwestie: de
+  merkkleuren zijn gekozen als vlakken, en als tekstkleur op een lichte
+  achtergrond halen ze de contrasteis niet.
+
+    amber   #F2A900 op canvas  =  1,9:1   -> alleen als vlak, met donkere tekst
+    green   #00A651 op wit     =  3,0:1   -> idem
+    coral   #E8543E op wit     =  3,6:1   -> idem
+    faint   #8A8478 op canvas  =  3,4:1   -> placeholders en grote tekst
+
+  De -ink-varianten zitten allemaal boven 4,5:1 en zijn voor tekst, iconen en
+  randen die iets moeten betekenen. De vlakken blijven de originele kleuren, dus
+  het merk verandert niet; alleen tekst in die kleur wordt donkerder gezet.
 */
 @theme {
-  --color-nacht-950: #080c16;
-  --color-nacht-900: #0f172a;
-  --color-nacht-800: #1a2337;
-  --color-nacht-700: #27324a;
-  --color-nacht-600: #3b4763;
-  --color-nacht-400: #7c89a8;
-  --color-nacht-200: #c3cadb;
-  --color-bier-500: #d99a2b;
-  --color-bier-400: #eab558;
-  --color-bier-300: #f3ce8e;
+  /* Vlakken */
+  --color-canvas: #faf7f2;
+  --color-surface: #ffffff;
+  --color-line: #e9e2d7;
+  --color-line-strong: #d8cfc0;
+
+  /* Tekst */
+  --color-ink: #2b2b33;
+  --color-ink-soft: #6b655c;
+  --color-ink-faint: #8a8478;
+
+  /* Amber: primaire actie */
+  --color-amber: #f2a900;
+  --color-amber-hover: #d99700;
+  --color-amber-ink: #9a6300;
+  --color-amber-soft: #fff3d6;
+
+  /* Groen: geslaagd, afgerond, opgeslagen */
+  --color-green: #00a651;
+  --color-green-ink: #007a3d;
+  --color-green-soft: #e2f6ea;
+
+  /* Koraal: waarschuwing en verwijderen */
+  --color-coral: #e8543e;
+  --color-coral-ink: #b93a26;
+  --color-coral-soft: #fdeae6;
+
+  /* Typografie */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Poppins', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-hand: 'Caveat', 'Segoe Script', cursive;
+
+  /* Zachte schaduw zodat kaarten van de achtergrond loskomen */
+  --shadow-card: 0 1px 2px rgb(43 43 51 / 4%), 0 4px 16px rgb(43 43 51 / 6%);
+  --shadow-lift: 0 2px 4px rgb(43 43 51 / 6%), 0 12px 28px rgb(43 43 51 / 10%);
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html,
@@ -33,68 +88,95 @@ body,
 
 body {
   margin: 0;
-  background-color: var(--color-nacht-950);
-  color: var(--color-nacht-200);
-  font-family:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
   -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Leaflet gaat uit van een lichte kaart; dit haalt de felle randen eraf. */
-.leaflet-container {
-  background: var(--color-nacht-900);
+/* Koppen krijgen Poppins; body blijft Inter. */
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* iOS zoomt in op een invoerveld met een lettergrootte onder 16px. */
+input,
+select,
+textarea {
+  font-size: 1rem;
   font-family: inherit;
+}
+
+/* ------------------------------------------------------------------ Leaflet */
+
+.leaflet-container {
+  background: var(--color-canvas);
+  font-family: var(--font-sans);
 }
 
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
-  background: var(--color-nacht-800);
-  color: var(--color-nacht-200);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-lift);
+  border-radius: 0.9rem;
 }
 
 .leaflet-popup-content {
-  margin: 0.75rem 0.9rem;
-  line-height: 1.4;
+  margin: 0.8rem 0.95rem;
+  line-height: 1.45;
 }
 
 .leaflet-control-attribution {
-  background: rgb(8 12 22 / 80%) !important;
-  color: var(--color-nacht-400) !important;
+  background: rgb(255 255 255 / 88%) !important;
+  color: var(--color-ink-soft) !important;
   font-size: 0.7rem;
 }
 
 .leaflet-control-attribution a {
-  color: var(--color-bier-400) !important;
+  color: var(--color-amber-ink) !important;
 }
 
-/* Markers van de twee lagen moeten met een blik te onderscheiden zijn. */
+.leaflet-bar a {
+  color: var(--color-ink) !important;
+  border-color: var(--color-line) !important;
+}
+
+/*
+  Markers van de twee lagen. Ze verschillen in kleur en in vorm, zodat de lagen
+  ook zonder kleurwaarneming te onderscheiden zijn: eigen tenten rond en amber,
+  anonieme meldingen een ruit in groen.
+*/
 .kt-marker {
   display: grid;
   place-items: center;
   border-radius: 9999px;
-  border-width: 2px;
-  border-style: solid;
+  border: 2px solid var(--color-surface);
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1;
+  box-shadow: 0 2px 6px rgb(43 43 51 / 25%);
 }
 
 .kt-marker-mine {
-  background: var(--color-bier-500);
-  border-color: #fff5e0;
-  color: #241703;
+  background: var(--color-amber);
+  color: #3a2600;
 }
 
 .kt-marker-public {
-  /* Ruit in plaats van rond, zodat de lagen ook zonder kleur te scheiden zijn. */
-  background: #2f6f8f;
-  border-color: #bfe4f5;
-  color: #ecf9ff;
-  border-radius: 0.25rem;
+  background: var(--color-green);
+  color: #ffffff;
+  border-radius: 0.28rem;
   transform: rotate(45deg);
 }
 
 .kt-marker-public > span {
+  display: block;
   transform: rotate(-45deg);
 }
 
@@ -104,13 +186,18 @@ body {
   border-radius: 9999px;
   font-weight: 700;
   font-size: 0.8rem;
-  color: #241703;
-  background: var(--color-bier-400);
-  border: 2px solid #fff5e0;
+  color: #3a2600;
+  background: var(--color-amber);
+  border: 3px solid var(--color-surface);
+  box-shadow: 0 2px 8px rgb(43 43 51 / 22%);
 }
 
 .kt-cluster-public {
-  background: #4e9fc4;
-  border-color: #bfe4f5;
-  color: #06212e;
+  background: var(--color-green);
+  color: #ffffff;
+}
+
+/* Bij het slepen van de marker in het locatieveld. */
+.leaflet-marker-draggable {
+  cursor: grab;
 }

@@ -122,6 +122,39 @@ queries. **De migraties zijn de bron van waarheid**: PostGIS-kolommen, generated
 columns, views en rolrechten laten zich niet uit een ORM-schema genereren. Wijzig
 altijd eerst de migratie.
 
+### Vormgeving
+
+Licht thema, warm off-white achtergrond met witte kaarten. De tokens staan in
+[`web/src/index.css`](web/src/index.css) onder `@theme`; gebruik die en geen
+losse kleurwaarden, dan blijft het één geheel.
+
+| Rol | Token | Waarde |
+| --- | --- | --- |
+| Achtergrond | `canvas` | `#FAF7F2` |
+| Kaartvlak | `surface` | `#FFFFFF` |
+| Tekst | `ink` / `ink-soft` / `ink-faint` | `#2B2B33` / `#6B655C` / `#8A8478` |
+| Primaire actie | `amber` | `#F2A900` |
+| Geslaagd, afgerond | `green` | `#00A651` |
+| Waarschuwing, verwijderen | `coral` | `#E8543E` |
+
+Elke merkkleur heeft een `-ink`-variant, en dat is geen smaakkwestie. De
+merkkleuren zijn gekozen als vlak; als tekstkleur op een lichte achtergrond halen
+ze de contrasteis van 4,5:1 niet — amber komt op 1,9:1, groen op 3,0:1 en koraal
+op 3,6:1. De vlakken blijven daarom de originele kleuren met donkere tekst erop,
+en tekst *in* een merkkleur gebruikt de `-ink`-variant. Hetzelfde geldt voor
+`ink-faint`: die is met 3,4:1 bedoeld voor placeholders en grote tekst, niet voor
+kleine bijschriften; daarvoor is `ink-soft`.
+
+Fonts: Poppins voor koppen, Inter voor tekst, Caveat spaarzaam als accent. Ze
+worden **zelf gehost** via Fontsource in plaats van via Google Fonts, om drie
+redenen: de Content Security Policy houdt `font-src` op `'self'`, er lekt geen
+IP-adres van een gebruiker naar een derde partij, en de PWA werkt hierdoor ook
+offline. Alleen de latin-subset en alleen de gewichten die gebruikt worden.
+
+Navigatie: op een telefoon een tabbalk onderaan met Vastleggen als amberkleurige
+knop in het midden, vanaf `md` dezelfde items in de koptekst. De startpagina is
+het overzicht met je statistiek, niet het invoerformulier.
+
 ### Wat waar gebeurt
 
 | Onderdeel | Plek |

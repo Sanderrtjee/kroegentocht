@@ -35,7 +35,7 @@ export function ModerationPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold text-nacht-200">Moderatie</h1>
+        <h1 className="text-xl font-semibold text-ink">Moderatie</h1>
         <Select
           className="max-w-48"
           value={status}
@@ -48,7 +48,7 @@ export function ModerationPage() {
         </Select>
       </div>
 
-      <p className="text-sm text-nacht-400">
+      <p className="text-sm text-ink-soft">
         Verbergen haalt de tekst uit de publieke laag en uit de aggregaten. Het bezoek zelf blijft
         van de eigenaar; die ziet het nog gewoon in zijn eigen overzicht.
       </p>
@@ -64,8 +64,8 @@ export function ModerationPage() {
         {queue.data?.items.map((item) => (
           <Card key={item.contentReportId}>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <span className="font-medium text-nacht-200">{item.venueName}</span>
-              <span className="flex items-center gap-2 text-xs text-nacht-400">
+              <span className="font-medium text-ink">{item.venueName}</span>
+              <span className="flex items-center gap-2 text-xs text-ink-soft">
                 {formatDateTime(item.createdAt)}
                 <Badge tone={item.hidden ? 'warn' : 'neutral'}>
                   {item.hidden ? 'verborgen' : item.status}
@@ -73,12 +73,12 @@ export function ModerationPage() {
               </span>
             </div>
 
-            <p className="mt-2 rounded-lg bg-nacht-950 px-3 py-2 text-sm whitespace-pre-wrap">
-              {item.description || <span className="text-nacht-600">(geen tekst)</span>}
+            <p className="mt-2 rounded-lg bg-canvas px-3 py-2 text-sm whitespace-pre-wrap">
+              {item.description || <span className="text-ink-faint">(geen tekst)</span>}
             </p>
 
-            <p className="mt-2 text-sm text-nacht-400">
-              <span className="font-medium text-nacht-200">Reden van de melder: </span>
+            <p className="mt-2 text-sm text-ink-soft">
+              <span className="font-medium text-ink">Reden van de melder: </span>
               {item.reason}
             </p>
 

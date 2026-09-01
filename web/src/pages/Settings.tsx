@@ -10,14 +10,39 @@ import { flushQueue, removeFromQueue } from '../lib/offline-queue.js';
 import { Badge, Button, Card, ErrorText, Field, Spinner, TextInput } from '../components/ui.js';
 
 export function SettingsPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const isModerator = user?.role === 'moderator' || user?.role === 'admin';
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-nacht-200">Instellingen</h1>
-      <p className="text-sm text-nacht-400">
-        Ingelogd als {user?.username} ({user?.role}).
-      </p>
+      <header>
+        <h1 className="font-display text-2xl font-bold text-ink">Instellingen</h1>
+        <p className="text-sm text-ink-soft">
+          Ingelogd als {user?.username} ({user?.role}).
+        </p>
+      </header>
+
+      {/*
+        Op een telefoon staat in de koptekst alleen de avatar, dus moderatie en
+        uitloggen zijn hier te vinden. Op een breed scherm staan ze ook bovenaan;
+        twee keer dezelfde ingang is hier geen probleem.
+      */}
+      <Card className="flex flex-wrap items-center gap-2">
+        {isModerator ? (
+          <Button variant="secondary" onClick={() => navigate('/moderatie')}>
+            Moderatiewachtrij
+          </Button>
+        ) : null}
+        <Button
+          variant="ghost"
+          onClick={() => {
+            void logout().then(() => navigate('/inloggen'));
+          }}
+        >
+          Uitloggen
+        </Button>
+      </Card>
 
       <QueueSection />
       <PeopleSection />
@@ -34,31 +59,31 @@ function QueueSection() {
 
   return (
     <Card>
-      <h2 className="font-medium text-nacht-200">Offline wachtrij</h2>
-      <p className="mt-1 text-sm text-nacht-400">
+      <h2 className="font-medium text-ink">Offline wachtrij</h2>
+      <p className="mt-1 text-sm text-ink-soft">
         Bezoeken worden eerst op dit toestel opgeslagen en daarna verstuurd. {online ? 'Er is verbinding.' : 'Er is nu geen verbinding.'}
       </p>
       {items.length === 0 ? (
-        <p className="mt-2 text-sm text-nacht-400">De wachtrij is leeg.</p>
+        <p className="mt-2 text-sm text-ink-soft">De wachtrij is leeg.</p>
       ) : (
         <ul className="mt-2 space-y-2">
           {items.map((item) => (
-            <li key={item.id} className="rounded-lg border border-nacht-700 p-2 text-sm">
+            <li key={item.id} className="rounded-lg border border-line p-2 text-sm">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="font-medium">
                   {item.payload.venue?.name ?? 'Bestaande tent'}
                 </span>
-                <span className="text-xs text-nacht-400">
+                <span className="text-xs text-ink-soft">
                   {item.photos.length} foto{item.photos.length === 1 ? '' : 's'} ·{' '}
                   {item.attempts} poging{item.attempts === 1 ? '' : 'en'}
                 </span>
               </div>
               {item.lastError ? (
-                <p className="mt-1 text-xs text-amber-300">{item.lastError}</p>
+                <p className="mt-1 text-xs text-coral-ink">{item.lastError}</p>
               ) : null}
               <button
                 type="button"
-                className="mt-1 text-xs text-nacht-400 underline hover:text-red-300"
+                className="mt-1 text-xs text-ink-soft underline hover:text-coral-ink"
                 onClick={() => {
                   if (window.confirm('Dit bezoek uit de wachtrij gooien? Het is dan weg.')) {
                     void removeFromQueue(item.id);
@@ -108,8 +133,8 @@ function PeopleSection() {
 
   return (
     <Card>
-      <h2 className="font-medium text-nacht-200">Mijn maatjes</h2>
-      <p className="mt-1 text-sm text-nacht-400">
+      <h2 className="font-medium text-ink">Mijn maatjes</h2>
+      <p className="mt-1 text-sm text-ink-soft">
         Deze namen zijn alleen voor jou zichtbaar en verdwijnen mee als je je account verwijdert.
       </p>
       {people.isLoading ? <Spinner /> : null}
@@ -117,13 +142,13 @@ function PeopleSection() {
         {people.data?.items.map((person) => (
           <span
             key={person.id}
-            className="flex items-center gap-1.5 rounded-full bg-nacht-700 px-3 py-1 text-sm"
+            className="flex items-center gap-1.5 rounded-full bg-canvas px-3 py-1 text-sm ring-1 ring-line"
           >
             {person.name}
-            <span className="text-xs text-nacht-400">{person.visitCount}</span>
+            <span className="text-xs text-ink-soft">{person.visitCount}</span>
             <button
               type="button"
-              className="text-nacht-400 hover:text-red-300"
+              className="text-ink-soft hover:text-coral-ink"
               aria-label={`${person.name} verwijderen`}
               onClick={() => {
                 if (
@@ -189,8 +214,8 @@ function FriendsSection() {
 
   return (
     <Card>
-      <h2 className="font-medium text-nacht-200">Vrienden</h2>
-      <p className="mt-1 text-sm text-nacht-400">
+      <h2 className="font-medium text-ink">Vrienden</h2>
+      <p className="mt-1 text-sm text-ink-soft">
         Alleen geaccepteerde vrienden zien bezoeken met de zichtbaarheid "ik en mijn vrienden".
         Anonieme meldingen blijven ook voor hen anoniem.
       </p>
@@ -199,7 +224,7 @@ function FriendsSection() {
         {friends.data?.items.map((friend) => (
           <li
             key={friend.friendshipId}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-nacht-700 px-3 py-2 text-sm"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line px-3 py-2 text-sm"
           >
             <span className="flex items-center gap-2">
               {friend.username}
@@ -226,7 +251,7 @@ function FriendsSection() {
           </li>
         ))}
         {friends.data && friends.data.items.length === 0 ? (
-          <li className="text-sm text-nacht-400">Nog geen vrienden of verzoeken.</li>
+          <li className="text-sm text-ink-soft">Nog geen vrienden of verzoeken.</li>
         ) : null}
       </ul>
       <div className="mt-3 flex flex-wrap gap-2">
@@ -249,8 +274,8 @@ function FriendsSection() {
 function ExportSection() {
   return (
     <Card>
-      <h2 className="font-medium text-nacht-200">Mijn data exporteren</h2>
-      <p className="mt-1 text-sm text-nacht-400">
+      <h2 className="font-medium text-ink">Mijn data exporteren</h2>
+      <p className="mt-1 text-sm text-ink-soft">
         De JSON bevat je bezoeken, maatjes en tochten. De zip bevat je fotos zoals ze op de server
         staan: hergecodeerd naar webp en zonder metadata.
       </p>
@@ -259,13 +284,13 @@ function ExportSection() {
             sessiecookie meegaat. */}
         <a
           href="/api/export/json"
-          className="rounded-lg bg-nacht-700 px-4 py-2 text-sm hover:bg-nacht-600"
+          className="rounded-lg bg-canvas px-4 py-2 text-sm hover:bg-line"
         >
           Alles als JSON
         </a>
         <a
           href="/api/export/photos.zip"
-          className="rounded-lg bg-nacht-700 px-4 py-2 text-sm hover:bg-nacht-600"
+          className="rounded-lg bg-canvas px-4 py-2 text-sm hover:bg-line"
         >
           Fotos als zip
         </a>
@@ -295,8 +320,8 @@ function PasswordSection() {
 
   return (
     <Card>
-      <h2 className="font-medium text-nacht-200">Wachtwoord wijzigen</h2>
-      <p className="mt-1 text-sm text-nacht-400">
+      <h2 className="font-medium text-ink">Wachtwoord wijzigen</h2>
+      <p className="mt-1 text-sm text-ink-soft">
         Alle sessies worden daarna afgemeld, ook op je andere toestellen.
       </p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -349,9 +374,9 @@ function DeleteAccountSection() {
   });
 
   return (
-    <Card className="border-red-900/70">
-      <h2 className="font-medium text-red-200">Account verwijderen</h2>
-      <div className="mt-1 space-y-2 text-sm text-nacht-400">
+    <Card className="border-coral/40">
+      <h2 className="font-medium text-coral-ink">Account verwijderen</h2>
+      <div className="mt-1 space-y-2 text-sm text-ink-soft">
         <p>
           Dit verwijdert onherroepelijk: je account, je bezoeken, je fotobestanden, je maatjes, je
           tochten, je vriendschappen en je sessies. Ook je anonieme meldingen verdwijnen, want dat

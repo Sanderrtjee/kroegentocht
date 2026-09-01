@@ -187,7 +187,7 @@ export class LeafletAdapter implements MapAdapter {
         button.style.marginTop = '0.5rem';
         button.style.textDecoration = 'underline';
         button.style.cursor = 'pointer';
-        button.style.color = 'var(--color-bier-400)';
+        button.style.color = 'var(--color-amber-ink)';
         L.DomEvent.on(button, 'click', (event) => {
           L.DomEvent.stop(event);
           point.onSelect?.();
@@ -214,7 +214,7 @@ export class LeafletAdapter implements MapAdapter {
         renderer: this.heatRenderer,
         radius: 14 + relative * 26,
         stroke: false,
-        fillColor: relative > 0.66 ? '#f0653f' : relative > 0.33 ? '#e8a33d' : '#3f7fa8',
+        fillColor: relative > 0.66 ? '#e8543e' : relative > 0.33 ? '#f2a900' : '#00a651',
         fillOpacity: 0.18 + relative * 0.32,
         interactive: false,
       }).addTo(this.heatLayer);

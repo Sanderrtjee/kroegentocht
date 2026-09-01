@@ -15,7 +15,18 @@ import { LocationPicker, type PickedLocation } from '../components/LocationPicke
 import { PeoplePicker, type AttendeeSelection } from '../components/PeoplePicker.js';
 import { PhotoPicker } from '../components/PhotoPicker.js';
 import { PriceInput, RatingInput, TagInput } from '../components/inputs.js';
-import { Badge, Button, Card, ErrorText, Field, Select, TextArea, TextInput } from '../components/ui.js';
+import {
+  Badge,
+  Button,
+  Card,
+  CardTitle,
+  ErrorText,
+  Field,
+  Notice,
+  Select,
+  TextArea,
+  TextInput,
+} from '../components/ui.js';
 
 const VISIBILITY_LABELS: Record<(typeof VISIBILITIES)[number], string> = {
   private: 'Alleen ik',
@@ -168,22 +179,18 @@ export function NewVisitPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-nacht-200">Bezoek vastleggen</h1>
+      <h1 className="text-xl font-semibold text-ink">Bezoek vastleggen</h1>
 
-      {notice ? (
-        <p className="rounded-lg border border-emerald-900 bg-emerald-950/60 px-3 py-2 text-sm text-emerald-200">
-          {notice}
-        </p>
-      ) : null}
+      {notice ? <Notice>{notice}</Notice> : null}
       <ErrorText error={error} />
 
       <Card>
-        <h2 className="mb-2 font-medium text-nacht-200">1. Foto</h2>
+        <CardTitle step={1}>Foto</CardTitle>
         <PhotoPicker files={photos} onChange={setPhotos} />
       </Card>
 
       <Card>
-        <h2 className="mb-2 font-medium text-nacht-200">2. Waar was je</h2>
+        <CardTitle step={2}>Waar was je</CardTitle>
         <LocationPicker
           value={location}
           onChange={(next) => {
@@ -195,8 +202,8 @@ export function NewVisitPage() {
         />
 
         {location && (nearbyVenues.data?.items.length ?? 0) > 0 ? (
-          <div className="mt-3 rounded-lg border border-nacht-700 p-3">
-            <p className="mb-2 text-sm text-nacht-400">
+          <div className="mt-3 rounded-lg border border-line p-3">
+            <p className="mb-2 text-sm text-ink-soft">
               Binnen {DEDUPE_RADIUS_M} meter herkent de app een bestaande tent automatisch. Deze
               staan hier in de buurt:
             </p>
@@ -215,19 +222,19 @@ export function NewVisitPage() {
                   }}
                   className={`rounded-lg px-3 py-1.5 text-sm ${
                     venueId === venue.id
-                      ? 'bg-bier-500 font-medium text-nacht-950'
-                      : 'bg-nacht-700 hover:bg-nacht-600'
+                      ? 'bg-amber font-medium text-ink'
+                      : 'bg-canvas text-ink ring-1 ring-line hover:bg-surface'
                   }`}
                 >
                   {venue.name}
                   {venue.street ? (
-                    <span className="ml-1 text-xs text-nacht-400">{venue.street}</span>
+                    <span className="ml-1 text-xs text-ink-soft">{venue.street}</span>
                   ) : null}
                 </button>
               ))}
             </div>
             {selectedVenue ? (
-              <p className="mt-2 text-xs text-nacht-400">
+              <p className="mt-2 text-xs text-ink-soft">
                 Dit bezoek komt bij de bestaande tent {selectedVenue.name}.
               </p>
             ) : null}
@@ -236,7 +243,7 @@ export function NewVisitPage() {
       </Card>
 
       <Card>
-        <h2 className="mb-3 font-medium text-nacht-200">3. De tent</h2>
+        <CardTitle step={3}>De tent</CardTitle>
         <div className="space-y-3">
           <Field label="Naam van de tent">
             <TextInput
@@ -287,12 +294,12 @@ export function NewVisitPage() {
       </Card>
 
       <Card>
-        <h2 className="mb-2 font-medium text-nacht-200">4. Wie waren erbij</h2>
+        <CardTitle step={4}>Wie waren erbij</CardTitle>
         <PeoplePicker value={attendees} onChange={setAttendees} />
       </Card>
 
       <Card>
-        <h2 className="mb-3 font-medium text-nacht-200">5. Tocht en zichtbaarheid</h2>
+        <CardTitle step={5}>Tocht en zichtbaarheid</CardTitle>
         <div className="space-y-3">
           <Field label="Onderdeel van een tocht" hint="Optioneel, bepaalt de tijdlijn en de afstand.">
             <Select value={crawlId} onChange={(event) => setCrawlId(event.target.value)}>
@@ -319,7 +326,7 @@ export function NewVisitPage() {
               ))}
             </Select>
           </Field>
-          <p className="rounded-lg bg-nacht-800 px-3 py-2 text-xs text-nacht-400">
+          <p className="rounded-lg bg-canvas px-3 py-2 text-xs text-ink-soft">
             {VISIBILITY_HELP[visibility]}
           </p>
         </div>
@@ -332,7 +339,7 @@ export function NewVisitPage() {
         {!canSave ? (
           <Badge tone="warn">Naam en locatie zijn nodig</Badge>
         ) : (
-          <span className="text-xs text-nacht-400">
+          <span className="text-xs text-ink-soft">
             Opslaan werkt ook zonder verbinding.
           </span>
         )}

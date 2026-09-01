@@ -9,8 +9,8 @@ function AuthShell({ title, children }: { title: string; children: React.ReactNo
   return (
     <div className="mx-auto flex min-h-full max-w-md flex-col justify-center gap-4 px-4 py-10">
       <div>
-        <h1 className="text-2xl font-semibold text-bier-400">Kroegentocht</h1>
-        <p className="text-sm text-nacht-400">{title}</p>
+        <h1 className="text-2xl font-semibold text-amber-ink">Kroegentocht</h1>
+        <p className="text-sm text-ink-soft">{title}</p>
       </div>
       <Card>{children}</Card>
     </div>
@@ -64,9 +64,9 @@ export function LoginPage() {
         <Button type="submit" disabled={busy} className="w-full">
           {busy ? 'Inloggen…' : 'Inloggen'}
         </Button>
-        <p className="text-center text-sm text-nacht-400">
+        <p className="text-center text-sm text-ink-soft">
           Uitnodiging gekregen?{' '}
-          <Link to="/registreren" className="text-bier-400 underline">
+          <Link to="/registreren" className="text-amber-ink underline">
             Account aanmaken
           </Link>
         </p>
@@ -108,10 +108,10 @@ export function RegisterPage() {
   if (status.data && !status.data.enabled) {
     return (
       <AuthShell title="Account aanmaken">
-        <p className="text-sm text-nacht-400">
+        <p className="text-sm text-ink-soft">
           Registratie staat uit op deze server. Vraag de beheerder om een account.
         </p>
-        <Link to="/inloggen" className="mt-3 inline-block text-bier-400 underline">
+        <Link to="/inloggen" className="mt-3 inline-block text-amber-ink underline">
           Terug naar inloggen
         </Link>
       </AuthShell>
@@ -153,8 +153,8 @@ export function RegisterPage() {
         <Button type="submit" disabled={busy} className="w-full">
           {busy ? 'Aanmaken…' : 'Account aanmaken'}
         </Button>
-        <p className="text-center text-sm text-nacht-400">
-          <Link to="/inloggen" className="text-bier-400 underline">
+        <p className="text-center text-sm text-ink-soft">
+          <Link to="/inloggen" className="text-amber-ink underline">
             Ik heb al een account
           </Link>
         </p>

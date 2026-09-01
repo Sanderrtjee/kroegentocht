@@ -134,9 +134,9 @@ export function LocationPicker({
         </Button>
       </div>
 
-      {gpsMessage ? <p className="text-sm text-amber-300">{gpsMessage}</p> : null}
+      {gpsMessage ? <p className="text-sm text-coral-ink">{gpsMessage}</p> : null}
       {accuracy !== null ? (
-        <p className="text-xs text-nacht-400">
+        <p className="text-xs text-ink-soft">
           GPS-nauwkeurigheid ongeveer {accuracy} meter. Sleep de marker als de tent er net naast
           staat.
         </p>
@@ -144,18 +144,18 @@ export function LocationPicker({
 
       {search.isFetching ? <Spinner label="Adressen zoeken" /> : null}
       {search.isError ? (
-        <p className="text-sm text-amber-300">
+        <p className="text-sm text-coral-ink">
           Adressen zoeken lukt nu niet. Zet de marker met de hand op de kaart.
         </p>
       ) : null}
 
       {search.data && search.data.items.length > 0 ? (
-        <ul className="divide-y divide-nacht-800 overflow-hidden rounded-lg border border-nacht-700">
+        <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line">
           {search.data.items.map((result) => (
             <li key={`${result.osmId ?? result.displayName}`}>
               <button
                 type="button"
-                className="w-full px-3 py-2 text-left text-sm hover:bg-nacht-800"
+                className="w-full px-3 py-2 text-left text-sm hover:bg-canvas"
                 onClick={() => {
                   place(
                     {
@@ -172,8 +172,8 @@ export function LocationPicker({
                   setAccuracy(null);
                 }}
               >
-                <span className="font-medium text-nacht-200">{result.name}</span>
-                <span className="ml-2 text-nacht-400">{result.displayName}</span>
+                <span className="font-medium text-ink">{result.name}</span>
+                <span className="ml-2 text-ink-soft">{result.displayName}</span>
               </button>
             </li>
           ))}
@@ -181,7 +181,7 @@ export function LocationPicker({
       ) : null}
 
       <MapCanvas
-        className="h-64 w-full overflow-hidden rounded-xl border border-nacht-700"
+        className="h-64 w-full overflow-hidden rounded-xl border border-line"
         center={value ?? { lat: 52.0907, lon: 5.1214 }}
         zoom={value ? 18 : 13}
         onReady={(adapter) => {
@@ -196,7 +196,7 @@ export function LocationPicker({
         }}
       />
 
-      <p className="text-xs text-nacht-400">
+      <p className="text-xs text-ink-soft">
         {value
           ? `Gekozen: ${value.lat.toFixed(5)}, ${value.lon.toFixed(5)}${value.city ? ` — ${value.city}` : ''}`
           : 'Nog geen locatie. Tik op de kaart, gebruik je locatie of zoek een adres.'}

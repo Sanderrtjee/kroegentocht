@@ -4,7 +4,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { VISIBILITIES } from '@kroegentocht/shared';
 import type { Paged, PersonDto, VisitDto } from '@kroegentocht/shared';
 import { api, query } from '../lib/api.js';
-import { formatDateTime, stars } from '../lib/format.js';
+import { formatDateTime} from '../lib/format.js';
 import {
   Badge,
   Button,
@@ -15,6 +15,7 @@ import {
   Select,
   Spinner,
   TextInput,
+  Stars,
 } from '../components/ui.js';
 
 interface Filters {
@@ -60,34 +61,34 @@ export function VisitCard({ visit, compact = false }: { visit: VisitDto; compact
           src={firstPhoto.thumbUrl}
           alt=""
           loading="lazy"
-          className="size-20 shrink-0 rounded-lg border border-nacht-700 object-cover"
+          className="size-20 shrink-0 rounded-lg border border-line object-cover"
         />
       ) : (
-        <div className="grid size-20 shrink-0 place-items-center rounded-lg border border-dashed border-nacht-700 text-xs text-nacht-600">
+        <div className="grid size-20 shrink-0 place-items-center rounded-lg border border-dashed border-line text-xs text-ink-faint">
           geen foto
         </div>
       )}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-2">
-          <Link to={`/bezoeken/${visit.id}`} className="font-medium text-nacht-200 hover:underline">
+          <Link to={`/bezoeken/${visit.id}`} className="font-medium text-ink hover:underline">
             {visit.venue.name}
           </Link>
-          <span className="text-bier-400">{stars(visit.rating)}</span>
+          <Stars rating={visit.rating} />
           <Badge>{VISIBILITY_LABELS[visit.visibility] ?? visit.visibility}</Badge>
         </div>
-        <p className="text-xs text-nacht-400">
+        <p className="text-xs text-ink-soft">
           {formatDateTime(visit.visitedAt)}
           {visit.venue.city ? ` — ${visit.venue.city}` : ''}
         </p>
         {!compact && visit.description ? (
-          <p className="mt-1 line-clamp-2 text-sm text-nacht-200">{visit.description}</p>
+          <p className="mt-1 line-clamp-2 text-sm text-ink">{visit.description}</p>
         ) : null}
-        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-nacht-400">
+        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-ink-soft">
           {visit.attendees.length > 0 ? (
             <span>met {visit.attendees.map((a) => a.name).join(', ')}</span>
           ) : null}
           {visit.tags.map((tag) => (
-            <span key={tag} className="rounded-full bg-nacht-800 px-2 py-0.5">
+            <span key={tag} className="rounded-full bg-canvas px-2 py-0.5 ring-1 ring-line">
               {tag}
             </span>
           ))}
@@ -144,9 +145,9 @@ export function VisitsPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold text-nacht-200">Mijn bezoeken</h1>
+        <h1 className="text-xl font-semibold text-ink">Mijn bezoeken</h1>
         {visits.data ? (
-          <span className="text-sm text-nacht-400">{visits.data.total} in totaal</span>
+          <span className="text-sm text-ink-soft">{visits.data.total} in totaal</span>
         ) : null}
       </div>
 
@@ -285,7 +286,7 @@ export function VisitsPage() {
           >
             Vorige
           </Button>
-          <span className="text-sm text-nacht-400">
+          <span className="text-sm text-ink-soft">
             {filters.page} van {totalPages}
           </span>
           <Button
@@ -328,18 +329,18 @@ export function VisitDetailPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-xl font-semibold text-nacht-200">{item.venue.name}</h1>
-        <span className="text-lg text-bier-400">{stars(item.rating)}</span>
+        <h1 className="text-xl font-semibold text-ink">{item.venue.name}</h1>
+        <Stars rating={item.rating} className="text-lg" />
       </div>
 
       <Card>
         <dl className="grid gap-2 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-nacht-400">Wanneer</dt>
+            <dt className="text-ink-soft">Wanneer</dt>
             <dd>{formatDateTime(item.visitedAt)}</dd>
           </div>
           <div>
-            <dt className="text-nacht-400">Waar</dt>
+            <dt className="text-ink-soft">Waar</dt>
             <dd>
               {[item.venue.street, item.venue.city, item.venue.country]
                 .filter(Boolean)
@@ -347,23 +348,23 @@ export function VisitDetailPage() {
             </dd>
           </div>
           <div>
-            <dt className="text-nacht-400">Zichtbaarheid</dt>
+            <dt className="text-ink-soft">Zichtbaarheid</dt>
             <dd>{VISIBILITY_LABELS[item.visibility] ?? item.visibility}</dd>
           </div>
           <div>
-            <dt className="text-nacht-400">Aanwezig</dt>
+            <dt className="text-ink-soft">Aanwezig</dt>
             <dd>{item.attendees.map((a) => a.name).join(', ') || '–'}</dd>
           </div>
         </dl>
 
         {item.description ? (
-          <p className="mt-3 whitespace-pre-wrap text-sm text-nacht-200">{item.description}</p>
+          <p className="mt-3 whitespace-pre-wrap text-sm text-ink">{item.description}</p>
         ) : null}
 
         {item.tags.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-1.5">
             {item.tags.map((tag) => (
-              <span key={tag} className="rounded-full bg-nacht-800 px-2 py-0.5 text-xs">
+              <span key={tag} className="rounded-full bg-canvas px-2 py-0.5 text-xs ring-1 ring-line">
                 {tag}
               </span>
             ))}
@@ -379,7 +380,7 @@ export function VisitDetailPage() {
                 src={photo.thumbUrl}
                 alt=""
                 loading="lazy"
-                className="aspect-square w-full rounded-lg border border-nacht-700 object-cover"
+                className="aspect-square w-full rounded-lg border border-line object-cover"
               />
             </a>
           ))}
@@ -390,7 +391,7 @@ export function VisitDetailPage() {
         {item.crawlId ? (
           <Link
             to={`/tochten/${item.crawlId}`}
-            className="rounded-lg bg-nacht-700 px-4 py-2 text-sm hover:bg-nacht-600"
+            className="rounded-lg bg-canvas px-4 py-2 text-sm hover:bg-line"
           >
             Naar de tocht
           </Link>

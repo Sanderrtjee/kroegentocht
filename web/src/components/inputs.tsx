@@ -20,7 +20,7 @@ export function RatingInput({
         <label
           key={score}
           className={`cursor-pointer rounded-lg px-2 py-1 text-xl transition-colors ${
-            score <= value ? 'text-bier-400' : 'text-nacht-600 hover:text-nacht-400'
+            score <= value ? 'text-amber-ink' : 'text-ink-faint hover:text-ink-soft'
           }`}
           title={`${score} van 5`}
         >
@@ -35,7 +35,7 @@ export function RatingInput({
           {score <= value ? '★' : '☆'}
         </label>
       ))}
-      <span className="ml-2 text-sm text-nacht-400">{value} van 5</span>
+      <span className="ml-2 text-sm text-ink-soft">{value} van 5</span>
     </fieldset>
   );
 }
@@ -56,8 +56,8 @@ export function PriceInput({
           onClick={() => onChange(value === level ? null : level)}
           className={`rounded-lg px-3 py-1.5 text-sm ${
             value === level
-              ? 'bg-bier-500 font-medium text-nacht-950'
-              : 'bg-nacht-700 text-nacht-200 hover:bg-nacht-600'
+              ? 'bg-amber font-medium text-ink'
+              : 'bg-canvas text-ink ring-1 ring-line hover:bg-surface'
           }`}
         >
           {'€'.repeat(level)} {PRICE_LABELS[level]}
@@ -96,13 +96,13 @@ export function TagInput({
         {value.map((tag) => (
           <span
             key={tag}
-            className="flex items-center gap-1 rounded-full bg-nacht-700 px-2.5 py-1 text-sm"
+            className="flex items-center gap-1 rounded-full bg-canvas px-2.5 py-1 text-sm text-ink ring-1 ring-line"
           >
             {tag}
             <button
               type="button"
               onClick={() => onChange(value.filter((t) => t !== tag))}
-              className="text-nacht-400 hover:text-red-300"
+              className="text-ink-soft hover:text-coral-ink"
               aria-label={`Tag ${tag} verwijderen`}
             >
               ×
@@ -141,7 +141,7 @@ export function TagInput({
               key={tag}
               type="button"
               onClick={() => add(tag)}
-              className="rounded-full border border-nacht-700 px-2 py-0.5 text-xs text-nacht-400 hover:border-bier-500 hover:text-bier-300"
+              className="rounded-full border border-line px-2 py-0.5 text-xs text-ink-soft hover:border-amber hover:text-amber-ink"
             >
               + {tag}
             </button>

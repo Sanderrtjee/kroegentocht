@@ -45,13 +45,17 @@ export function App() {
           </RequireAuth>
         }
       >
-        <Route path="/" element={<NewVisitPage />} />
+        {/* De statistiekpagina is de startpagina: als je de app opent wil je
+            zien waar je geweest bent, niet meteen een leeg formulier. */}
+        <Route path="/" element={<StatsPage />} />
+        <Route path="/vastleggen" element={<NewVisitPage />} />
         <Route path="/kaart" element={<MapPage />} />
         <Route path="/bezoeken" element={<VisitsPage />} />
         <Route path="/bezoeken/:id" element={<VisitDetailPage />} />
         <Route path="/tochten" element={<CrawlsPage />} />
         <Route path="/tochten/:id" element={<CrawlDetailPage />} />
-        <Route path="/statistiek" element={<StatsPage />} />
+        {/* Oude route, blijft werken voor wie hem in zijn beginscherm heeft staan. */}
+        <Route path="/statistiek" element={<Navigate to="/" replace />} />
         <Route path="/instellingen" element={<SettingsPage />} />
         <Route
           path="/moderatie"

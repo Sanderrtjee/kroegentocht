@@ -10,10 +10,10 @@ import type {
   VisitDto,
 } from '@kroegentocht/shared';
 import { api, query } from '../lib/api.js';
-import { formatDateTime, formatMonth, formatRating, stars } from '../lib/format.js';
+import { formatDateTime, formatMonth, formatRating} from '../lib/format.js';
 import { MapCanvas } from '../map/MapCanvas.js';
 import type { Bounds, MapAdapter, MapPoint } from '../map/MapAdapter.js';
-import { Badge, Button, Card, ErrorText, Spinner, TextArea } from '../components/ui.js';
+import { Badge, Button, Card, ErrorText, Spinner, Stars, TextArea } from '../components/ui.js';
 
 /**
  * De kaart.
@@ -173,7 +173,7 @@ export function MapPage() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="mr-2 text-xl font-semibold text-nacht-200">Kaart</h1>
+        <h1 className="mr-2 text-xl font-semibold text-ink">Kaart</h1>
         <LayerToggle
           label="Mijn tenten"
           checked={showMine}
@@ -202,7 +202,7 @@ export function MapPage() {
 
       <div className="grid gap-3 lg:grid-cols-[2fr_1fr]">
         <MapCanvas
-          className="h-[60vh] min-h-80 w-full overflow-hidden rounded-xl border border-nacht-700"
+          className="h-[60vh] min-h-80 w-full overflow-hidden rounded-xl border border-line"
           center={{ lat: 52.0907, lon: 5.1214 }}
           zoom={14}
           onReady={(adapter) => {
@@ -251,12 +251,12 @@ export function MapPage() {
 
           {selection === null && nearbyRadius === null ? (
             <Card>
-              <h2 className="font-medium text-nacht-200">Twee lagen</h2>
-              <p className="mt-2 text-sm text-nacht-400">
+              <h2 className="font-medium text-ink">Twee lagen</h2>
+              <p className="mt-2 text-sm text-ink-soft">
                 De goudkleurige rondjes zijn tenten waar jij was. De blauwe ruiten zijn anonieme
                 meldingen van anderen. Klik op een marker voor de details.
               </p>
-              <p className="mt-2 text-sm text-nacht-400">
+              <p className="mt-2 text-sm text-ink-soft">
                 Een tent komt pas op de anonieme laag vanaf {K_ANONYMITY_THRESHOLD} verschillende
                 melders. Bij minder melders zou de marker zelf al verraden dat iemand daar was.
               </p>
@@ -284,7 +284,7 @@ function LayerToggle({
   return (
     <label
       className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm ${
-        checked ? 'border-bier-500/60 bg-nacht-800' : 'border-nacht-700 text-nacht-400'
+        checked ? 'border-amber/50 bg-canvas' : 'border-line text-ink-soft'
       }`}
     >
       <input
@@ -320,29 +320,29 @@ function MineDetailPanel({
       <ErrorText error={visits.error} />
       <div className="mt-2 space-y-3">
         {visits.data?.items.map((visit) => (
-          <div key={visit.id} className="flex gap-2 border-t border-nacht-800 pt-2">
+          <div key={visit.id} className="flex gap-2 border-t border-line pt-2">
             {visit.photos[0] ? (
               <img
                 src={visit.photos[0].thumbUrl}
                 alt=""
                 loading="lazy"
-                className="size-16 shrink-0 rounded-lg border border-nacht-700 object-cover"
+                className="size-16 shrink-0 rounded-lg border border-line object-cover"
               />
             ) : null}
             <div className="min-w-0">
-              <p className="text-sm text-bier-400">{stars(visit.rating)}</p>
-              <p className="text-xs text-nacht-400">{formatDateTime(visit.visitedAt)}</p>
+              <Stars rating={visit.rating} className="text-sm" />
+              <p className="text-xs text-ink-soft">{formatDateTime(visit.visitedAt)}</p>
               {visit.description ? (
                 <p className="mt-1 line-clamp-3 text-sm">{visit.description}</p>
               ) : null}
-              <Link to={`/bezoeken/${visit.id}`} className="text-xs text-bier-400 underline">
+              <Link to={`/bezoeken/${visit.id}`} className="text-xs text-amber-ink underline">
                 Bekijk bezoek
               </Link>
             </div>
           </div>
         ))}
         {visits.data && visits.data.items.length === 0 ? (
-          <p className="text-sm text-nacht-400">Hier heb je nog geen bezoek vastgelegd.</p>
+          <p className="text-sm text-ink-soft">Hier heb je nog geen bezoek vastgelegd.</p>
         ) : null}
       </div>
     </Card>
@@ -381,14 +381,14 @@ function PublicDetailPanel({
   return (
     <Card>
       <PanelHeader title={feature.name} subtitle="Anonieme meldingen" onClose={onClose} />
-      <p className="mt-1 text-sm text-nacht-400">
+      <p className="mt-1 text-sm text-ink-soft">
         {formatRating(feature.avgRating)} gemiddeld uit {feature.reportCount} melding
         {feature.reportCount === 1 ? '' : 'en'} van {feature.reporterCount} verschillende mensen.
       </p>
       {feature.topTags.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-1">
           {feature.topTags.map((tag) => (
-            <span key={tag} className="rounded-full bg-nacht-800 px-2 py-0.5 text-xs">
+            <span key={tag} className="rounded-full bg-canvas px-2 py-0.5 text-xs text-ink-soft ring-1 ring-line">
               {tag}
             </span>
           ))}
@@ -400,20 +400,20 @@ function PublicDetailPanel({
 
       <ul className="mt-3 space-y-3">
         {reports.data?.items.map((report) => (
-          <li key={report.reportId} className="border-t border-nacht-800 pt-2">
+          <li key={report.reportId} className="border-t border-line pt-2">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm text-bier-400">{stars(report.rating)}</span>
-              <span className="text-xs text-nacht-400">{formatMonth(report.visitedMonth)}</span>
+              <Stars rating={report.rating} className="text-sm" />
+              <span className="text-xs text-ink-soft">{formatMonth(report.visitedMonth)}</span>
             </div>
             {report.description ? (
               <p className="mt-1 whitespace-pre-wrap text-sm">{report.description}</p>
             ) : null}
             {report.tags.length > 0 ? (
-              <p className="mt-1 text-xs text-nacht-400">{report.tags.join(', ')}</p>
+              <p className="mt-1 text-xs text-ink-soft">{report.tags.join(', ')}</p>
             ) : null}
 
             {reported.includes(report.reportId) ? (
-              <p className="mt-1 text-xs text-emerald-300">Gemeld bij een moderator.</p>
+              <p className="mt-1 text-xs text-green-ink">Gemeld bij een moderator.</p>
             ) : reportingId === report.reportId ? (
               <div className="mt-2 space-y-2">
                 <TextArea
@@ -440,7 +440,7 @@ function PublicDetailPanel({
             ) : (
               <button
                 type="button"
-                className="mt-1 text-xs text-nacht-400 underline hover:text-red-300"
+                className="mt-1 text-xs text-ink-soft underline hover:text-coral-ink"
                 onClick={() => setReportingId(report.reportId)}
               >
                 Ongepast, melden
@@ -450,7 +450,7 @@ function PublicDetailPanel({
         ))}
       </ul>
       <ErrorText error={flag.error} />
-      <p className="mt-3 text-xs text-nacht-600">
+      <p className="mt-3 text-xs text-ink-faint">
         Van een anonieme melding zijn alleen de tent, het cijfer, de tags, de tekst en de maand
         bekend. Wie het schreef staat nergens vast in wat hier wordt uitgeleverd.
       </p>
@@ -475,8 +475,8 @@ function NearbyPanel({
 }) {
   return (
     <Card>
-      <h2 className="font-medium text-nacht-200">In de buurt</h2>
-      <label className="mt-2 block text-sm text-nacht-400">
+      <h2 className="font-medium text-ink">In de buurt</h2>
+      <label className="mt-2 block text-sm text-ink-soft">
         Straal: {radius >= 1000 ? `${radius / 1000} km` : `${radius} m`}
         <input
           type="range"
@@ -490,7 +490,7 @@ function NearbyPanel({
       </label>
       {loading ? <Spinner label="Locatie en tenten ophalen" /> : null}
       {error ? (
-        <p className="mt-2 text-sm text-amber-300">
+        <p className="mt-2 text-sm text-coral-ink">
           Locatie bepalen lukte niet. Zonder locatie kan deze lijst niet.
         </p>
       ) : null}
@@ -500,10 +500,10 @@ function NearbyPanel({
             <button
               type="button"
               onClick={() => onPick(feature)}
-              className="w-full rounded-lg px-2 py-1.5 text-left text-sm hover:bg-nacht-800"
+              className="w-full rounded-lg px-2 py-1.5 text-left text-sm hover:bg-canvas"
             >
               <span className="font-medium">{feature.name}</span>
-              <span className="ml-2 text-xs text-nacht-400">
+              <span className="ml-2 text-xs text-ink-soft">
                 {feature.distanceM !== null ? `${feature.distanceM} m` : ''} ·{' '}
                 {formatRating(feature.avgRating)} uit {feature.reportCount}
               </span>
@@ -511,7 +511,7 @@ function NearbyPanel({
           </li>
         ))}
         {!loading && items.length === 0 ? (
-          <li className="text-sm text-nacht-400">
+          <li className="text-sm text-ink-soft">
             Niets binnen deze straal boven de meldingsdrempel.
           </li>
         ) : null}
@@ -532,13 +532,13 @@ function PanelHeader({
   return (
     <div className="flex items-start justify-between gap-2">
       <div>
-        <h2 className="font-medium text-nacht-200">{title}</h2>
-        <p className="text-xs text-nacht-400">{subtitle}</p>
+        <h2 className="font-medium text-ink">{title}</h2>
+        <p className="text-xs text-ink-soft">{subtitle}</p>
       </div>
       <button
         type="button"
         onClick={onClose}
-        className="rounded-lg px-2 text-nacht-400 hover:bg-nacht-800"
+        className="rounded-lg px-2 text-ink-soft hover:bg-canvas"
         aria-label="Paneel sluiten"
       >
         ×

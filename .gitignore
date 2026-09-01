@@ -7,3 +7,6 @@ coverage/
 media/
 backups/
 .DS_Store
+
+# Lokale ontwikkelhulp met machine-specifieke paden
+.claude/

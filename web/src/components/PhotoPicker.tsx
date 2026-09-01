@@ -59,12 +59,12 @@ export function PhotoPicker({
             <img
               src={url}
               alt={`Foto ${index + 1}`}
-              className="size-20 rounded-lg border border-nacht-700 object-cover"
+              className="size-20 rounded-lg border border-line object-cover"
             />
             <button
               type="button"
               onClick={() => onChange(files.filter((_, i) => i !== index))}
-              className="absolute -right-1.5 -top-1.5 size-6 rounded-full bg-nacht-800 text-sm text-nacht-200 hover:bg-red-800"
+              className="absolute -right-1.5 -top-1.5 grid size-6 place-items-center rounded-full bg-surface text-sm text-ink shadow-card ring-1 ring-line hover:bg-coral hover:text-white"
               aria-label={`Foto ${index + 1} verwijderen`}
             >
               ×
@@ -76,7 +76,7 @@ export function PhotoPicker({
       <div className="mt-2 flex flex-wrap gap-2">
         {/* Een label om een verborgen input is genoeg: een klik op het label
             opent de bestandskiezer, en het toetsenbord werkt ook. */}
-        <label className="cursor-pointer rounded-lg bg-bier-500 px-4 py-2 text-sm font-semibold text-nacht-950 hover:bg-bier-400">
+        <label className="cursor-pointer rounded-lg bg-amber px-4 py-2 text-sm font-semibold text-ink hover:bg-amber-hover">
           Foto maken
           <input
             type="file"
@@ -90,7 +90,7 @@ export function PhotoPicker({
           />
         </label>
 
-        <label className="cursor-pointer rounded-lg bg-nacht-700 px-4 py-2 text-sm hover:bg-nacht-600">
+        <label className="cursor-pointer rounded-lg bg-canvas px-4 py-2 text-sm hover:bg-line">
           Uit galerij kiezen
           <input
             type="file"
@@ -105,8 +105,8 @@ export function PhotoPicker({
         </label>
       </div>
 
-      {problem ? <p className="mt-2 text-sm text-amber-300">{problem}</p> : null}
-      <p className="mt-2 text-xs text-nacht-400">
+      {problem ? <p className="mt-2 text-sm text-coral-ink">{problem}</p> : null}
+      <p className="mt-2 text-xs text-ink-soft">
         Locatiegegevens en andere metadata worden bij het uploaden verwijderd. Elke foto wordt
         opnieuw opgeslagen als webp.
       </p>

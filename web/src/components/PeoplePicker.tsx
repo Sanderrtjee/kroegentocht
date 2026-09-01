@@ -72,20 +72,20 @@ export function PeoplePicker({
                 onClick={() => toggle(person)}
                 className={`rounded-full px-3 py-1 text-sm ${
                   active
-                    ? 'bg-bier-500 font-medium text-nacht-950'
-                    : 'bg-nacht-700 text-nacht-200 hover:bg-nacht-600'
+                    ? 'bg-amber font-medium text-ink'
+                    : 'bg-canvas text-ink ring-1 ring-line hover:bg-surface'
                 }`}
               >
                 {person.name}
                 {person.visitCount > 0 && !active ? (
-                  <span className="ml-1 text-xs text-nacht-400">{person.visitCount}</span>
+                  <span className="ml-1 text-xs text-ink-soft">{person.visitCount}</span>
                 ) : null}
               </button>
             );
           })}
         </div>
       ) : (
-        <p className="text-sm text-nacht-400">
+        <p className="text-sm text-ink-soft">
           Nog geen maatjes in je lijst. Typ hieronder een naam.
         </p>
       )}
@@ -98,16 +98,16 @@ export function PeoplePicker({
             .map((entry) => (
               <span
                 key={entry.label}
-                className="flex items-center gap-1 rounded-full border border-bier-500/60 px-2.5 py-1 text-sm"
+                className="flex items-center gap-1 rounded-full border border-amber/50 px-2.5 py-1 text-sm"
               >
                 {entry.label}
                 {!entry.remember ? (
-                  <span className="text-xs text-nacht-400">(eenmalig)</span>
+                  <span className="text-xs text-ink-soft">(eenmalig)</span>
                 ) : null}
                 <button
                   type="button"
                   onClick={() => onChange(value.filter((v) => v !== entry))}
-                  className="text-nacht-400 hover:text-red-300"
+                  className="text-ink-soft hover:text-coral-ink"
                   aria-label={`${entry.label} verwijderen`}
                 >
                   ×
@@ -130,7 +130,7 @@ export function PeoplePicker({
             }
           }}
         />
-        <label className="flex items-center gap-1.5 text-sm text-nacht-400">
+        <label className="flex items-center gap-1.5 text-sm text-ink-soft">
           <input
             type="checkbox"
             checked={remember}
