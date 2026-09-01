@@ -96,7 +96,7 @@ export function StatsPage() {
           {greeting}, {user?.username}
         </h1>
         <p className="font-hand text-xl text-amber-ink">
-          {data.venueCount} tenten in {data.cityCount}{' '}
+          {data.venueCount} {data.venueCount === 1 ? 'tent' : 'tenten'} in {data.cityCount}{' '}
           {data.cityCount === 1 ? 'stad' : 'steden'}, en het houdt niet op
         </p>
       </header>

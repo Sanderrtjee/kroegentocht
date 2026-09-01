@@ -196,7 +196,7 @@ export function VisitsPage() {
                 value={filters.ratingMin}
                 onChange={(event) => set('ratingMin', event.target.value)}
               >
-                <option value="">–</option>
+                <option value="">Geen minimum</option>
                 {[1, 2, 3, 4, 5].map((n) => (
                   <option key={n} value={n}>
                     {n}
@@ -209,7 +209,7 @@ export function VisitsPage() {
                 value={filters.ratingMax}
                 onChange={(event) => set('ratingMax', event.target.value)}
               >
-                <option value="">–</option>
+                <option value="">Geen maximum</option>
                 {[1, 2, 3, 4, 5].map((n) => (
                   <option key={n} value={n}>
                     {n}
@@ -342,9 +342,11 @@ export function VisitDetailPage() {
           <div>
             <dt className="text-ink-soft">Waar</dt>
             <dd>
-              {[item.venue.street, item.venue.city, item.venue.country]
-                .filter(Boolean)
-                .join(', ') || '–'}
+              {[item.venue.street, item.venue.city, item.venue.country].filter(Boolean).join(', ') ||
+                // Een tent zonder adres is een marker die met de hand op de kaart is
+                // gezet, zonder Nominatim-zoekopdracht. Coordinaten zijn er dan wel
+                // altijd; een kale streep zou hier niets zeggen.
+                `${item.venue.lat.toFixed(5)}, ${item.venue.lon.toFixed(5)}`}
             </dd>
           </div>
           <div>

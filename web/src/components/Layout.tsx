@@ -244,8 +244,14 @@ export function Layout() {
         Zelf gehost. Kaartdata &copy; OpenStreetMap-bijdragers, ODbL.
       </footer>
 
-      {/* Tabbalk onderaan, alleen op een telefoon. */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+      {/*
+        Tabbalk onderaan, alleen op een telefoon. Volledig dekkend en niet
+        halftransparant: op de kaartpagina staat de Leaflet-attributie precies
+        onder deze balk, en die kleine, contrastrijke tekst bleef door de
+        eerdere bg-surface/95 met backdrop-blur heen leesbaar. Dat oogde als een
+        overlappende laag in plaats van een nette balk erboven.
+      */}
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="mx-auto flex max-w-md items-end justify-around px-2 py-1.5">
           {NAV.slice(0, 2).map((item) => (
             <TabLink key={item.to} {...item} />
