@@ -326,12 +326,55 @@ export function VisitDetailPage() {
 
   const item = visit.data;
 
+  const [heroPhoto, ...restPhotos] = item.photos;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-xl font-semibold text-ink">{item.venue.name}</h1>
+        <h1 className="font-display text-xl font-semibold text-ink">{item.venue.name}</h1>
         <Stars rating={item.rating} className="text-lg" />
       </div>
+
+      {/*
+        De foto staat boven de gegevens, niet erna: het is het eerste wat je
+        herkent bij een bezoek. De hero gebruikt fullUrl (tot 2000px) in plaats
+        van thumbUrl (400px), want op een schermbrede afbeelding wordt een
+        thumbnail zichtbaar zacht. En geen aspect-square meer: die sneed bij een
+        enkele foto altijd een stuk van het beeld af (in de screenshot verdween
+        de koffiekop onderaan). Alleen een max-height als plafond tegen een
+        extreem hoge portretfoto die de pagina zou domineren.
+      */}
+      {heroPhoto ? (
+        <div className="space-y-2">
+          <a href={heroPhoto.fullUrl} target="_blank" rel="noreferrer" className="block">
+            <img
+              src={heroPhoto.fullUrl}
+              alt=""
+              className="max-h-[70vh] w-full rounded-2xl object-cover shadow-card ring-1 ring-line"
+            />
+          </a>
+          {restPhotos.length > 0 ? (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {restPhotos.map((photo) => (
+                <a
+                  key={photo.id}
+                  href={photo.fullUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="shrink-0"
+                >
+                  <img
+                    src={photo.thumbUrl}
+                    alt=""
+                    loading="lazy"
+                    className="size-20 rounded-xl border border-line object-cover"
+                  />
+                </a>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <Card>
         <dl className="grid gap-2 text-sm sm:grid-cols-2">
@@ -373,21 +416,6 @@ export function VisitDetailPage() {
           </div>
         ) : null}
       </Card>
-
-      {item.photos.length > 0 ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {item.photos.map((photo) => (
-            <a key={photo.id} href={photo.fullUrl} target="_blank" rel="noreferrer">
-              <img
-                src={photo.thumbUrl}
-                alt=""
-                loading="lazy"
-                className="aspect-square w-full rounded-lg border border-line object-cover"
-              />
-            </a>
-          ))}
-        </div>
-      ) : null}
 
       <div className="flex flex-wrap gap-2">
         {item.crawlId ? (
